@@ -1,9 +1,9 @@
 "use client";
 
+import { ArrowLeft, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { ArrowLeft, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 
 type UserProfile = {
   name: string;
@@ -35,6 +35,7 @@ const readStoredUser = (): UserProfile | null => {
 };
 
 export default function EntrarPage() {
+
   const router = useRouter();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [feedback, setFeedback] = useState("");
@@ -47,55 +48,69 @@ export default function EntrarPage() {
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
 
-  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFeedback("");
 
-    const storedUser = readStoredUser();
-    if (!storedUser) {
-      setFeedback("Nenhuma conta cadastrada. Crie sua conta para continuar.");
-      setTab("signup");
-      return;
+    try {
+      const normalizedEmail = loginEmail.trim().toLowerCase();
+      const res = await fetch("http://localhost:8080/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail, password: loginPassword }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem("qfome-user", JSON.stringify(data));
+        window.dispatchEvent(new Event("qfome-user-changed"));
+        setFeedback("Login realizado. Redirecionando para sua area de cliente...");
+        router.push("/cliente");
+      } else {
+        const text = await res.text();
+        setFeedback(text || "Usuário ou senha inválidos.");
+      }
+    } catch (err) {
+      setFeedback("Erro ao conectar com o servidor.");
     }
-
-    if (normalizeEmail(storedUser.email) !== normalizeEmail(loginEmail)) {
-      setFeedback("E-mail nao encontrado. Tente novamente ou crie uma nova conta.");
-      return;
-    }
-
-    if (!loginPassword.trim()) {
-      setFeedback("Informe sua senha para entrar.");
-      return;
-    }
-
-    localStorage.setItem("qfome-user", JSON.stringify(storedUser));
-    window.dispatchEvent(new Event("qfome-user-changed"));
-    setFeedback("Login realizado. Redirecionando para sua area de cliente...");
-    router.push("/cliente");
   };
 
-  const handleSignup = (event: FormEvent<HTMLFormElement>) => {
+
+  const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFeedback("");
 
-    if (!signupName.trim() || !signupEmail.trim() || !signupPassword.trim()) {
-      setFeedback("Preencha nome, e-mail e senha para criar sua conta.");
+    if (!signupEmail.trim() || !signupPassword.trim()) {
+      setFeedback("Preencha e-mail e senha para criar sua conta.");
       return;
     }
 
-    if (signupPassword.trim().length < 6) {
-      setFeedback("Use uma senha com pelo menos 6 caracteres.");
-      return;
+    try {
+      const normalizedEmail = signupEmail.trim().toLowerCase();
+      const res = await fetch("http://localhost:8080/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password: signupPassword,
+          name: signupName,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem("qfome-user", JSON.stringify(data));
+        window.dispatchEvent(new Event("qfome-user-changed"));
+        setFeedback("Conta criada com sucesso. Redirecionando para sua area de cliente...");
+        router.push("/cliente");
+      } else {
+        const text = await res.text();
+        setFeedback(text || "Erro ao criar conta.");
+      }
+    } catch (err) {
+      setFeedback("Erro ao conectar com o servidor.");
     }
-
-    const newUser: UserProfile = {
-      name: signupName.trim(),
-      email: normalizeEmail(signupEmail),
-      phone: signupPhone.trim(),
-    };
-
-    localStorage.setItem("qfome-user", JSON.stringify(newUser));
-    window.dispatchEvent(new Event("qfome-user-changed"));
-    setFeedback("Conta criada com sucesso. Redirecionando para sua area de cliente...");
-    router.push("/cliente");
   };
 
   return (
@@ -122,22 +137,20 @@ export default function EntrarPage() {
             <button
               type="button"
               onClick={() => setTab("login")}
-              className={`rounded-xl px-3 py-2 text-sm font-black uppercase tracking-[0.1em] transition ${
-                tab === "login"
-                  ? "bg-[#d72638] text-white"
-                  : "text-[#7f473b] hover:bg-[#fff2eb]"
-              }`}
+              className={`rounded-xl px-3 py-2 text-sm font-black uppercase tracking-[0.1em] transition ${tab === "login"
+                ? "bg-[#d72638] text-white"
+                : "text-[#7f473b] hover:bg-[#fff2eb]"
+                }`}
             >
               Entrar
             </button>
             <button
               type="button"
               onClick={() => setTab("signup")}
-              className={`rounded-xl px-3 py-2 text-sm font-black uppercase tracking-[0.1em] transition ${
-                tab === "signup"
-                  ? "bg-[#d72638] text-white"
-                  : "text-[#7f473b] hover:bg-[#fff2eb]"
-              }`}
+              className={`rounded-xl px-3 py-2 text-sm font-black uppercase tracking-[0.1em] transition ${tab === "signup"
+                ? "bg-[#d72638] text-white"
+                : "text-[#7f473b] hover:bg-[#fff2eb]"
+                }`}
             >
               Criar conta
             </button>
