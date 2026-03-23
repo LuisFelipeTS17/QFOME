@@ -1,8 +1,8 @@
 "use client";
 
+import { ArrowLeft, Clock3, MapPin, ShoppingBag, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Clock3, MapPin, ShoppingBag, UserRound } from "lucide-react";
 
 type UserProfile = {
   name: string;
@@ -121,6 +121,10 @@ export default function ClientePage() {
   const [lastOrder] = useState<LastOrder | null>(() => readLastOrder());
   const [orderHistory] = useState<LastOrder[]>(() => readOrderHistory());
   const [cartItems] = useState<OrderItem[]>(() => readCartItems());
+  const handleLogout = () => {
+    localStorage.removeItem("qfome-user");
+    window.location.href = "/entrar";
+  };
 
   const cartTotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + (item.totalPrice ?? item.unitPrice * item.quantity), 0),
@@ -161,13 +165,21 @@ export default function ClientePage() {
   return (
     <div className="qfome-shell min-h-screen pb-16 text-[var(--qfome-ink)]">
       <main className="mx-auto w-full max-w-6xl px-4 pt-6">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 rounded-2xl border border-[#f0cabd] bg-white px-4 py-2 text-sm font-bold text-[#6a3b32] transition hover:bg-[#fff0e8]"
-        >
-          <ArrowLeft size={16} />
-          Voltar para a home
-        </Link>
+        <div className="flex gap-2 items-center mb-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-2xl border border-[#f0cabd] bg-white px-4 py-2 text-sm font-bold text-[#6a3b32] transition hover:bg-[#fff0e8]"
+          >
+            <ArrowLeft size={16} />
+            Voltar para a home
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 rounded-2xl border border-[#f0cabd] bg-white px-4 py-2 text-sm font-bold text-[#d72638] transition hover:bg-[#fff0e8] ml-2"
+          >
+            Sair
+          </button>
+        </div>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <article className="rounded-[2rem] border border-[var(--qfome-outline)] bg-[var(--qfome-surface)] p-4 shadow-[0_16px_35px_rgba(121,66,34,0.11)] sm:p-6">
