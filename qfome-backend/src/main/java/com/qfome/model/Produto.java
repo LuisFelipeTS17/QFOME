@@ -38,6 +38,14 @@ public class Produto {
         this.preco = preco;
     }
 
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
     public Categoria getCategoria() {
         return categoria;
     }
