@@ -1,11 +1,13 @@
 package com.qfome.dto;
 
+import java.math.BigDecimal;
+
 import com.qfome.model.Produto;
 
 public record ProdutoResumoDTO(
         Long id,
         String nome,
-        Double preco,
+        BigDecimal preco,
         String slug,
         String categoriaNome
 ) {
