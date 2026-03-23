@@ -27,7 +27,8 @@ public class ProdutoController {
     public ResponseEntity<List<ProdutoResumoDTO>> listar(
             @RequestParam(required = false) String categoria
     ) {
-        if (categoria != null) {
+        // Ignora filtro de categoria vazio
+        if (categoria != null && !categoria.isBlank()) {
             return ResponseEntity.ok(produtoService.listarPorCategoria(categoria));
         }
         return ResponseEntity.ok(produtoService.listarTodos());
