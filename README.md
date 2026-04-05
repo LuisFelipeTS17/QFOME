@@ -9,44 +9,26 @@
 
 Matou a fome, chamou QFOME.
 
-QFOME e uma plataforma de delivery criada para oferecer uma jornada completa de pedido: descoberta de pratos, personalizacao, carrinho, checkout, acompanhamento e area do cliente.
-
-## Demo
-
-![QFOME Demo](./documentacao/assets/demo-placeholder.svg)
-
-Substitua pelo seu GIF real em `documentacao/assets/qfome-demo.gif` e atualize o link da imagem acima.
-
-## Screenshots
-
-| Home | Produto |
-| --- | --- |
-| ![Home](./documentacao/assets/screenshot-home.svg) | ![Produto](./documentacao/assets/screenshot-produto.svg) |
-
-| Checkout | Acompanhamento |
-| --- | --- |
-| ![Checkout](./documentacao/assets/screenshot-checkout.svg) | ![Acompanhamento](./documentacao/assets/screenshot-acompanhar.svg) |
-
-Substitua os placeholders por capturas reais mantendo os mesmos nomes de arquivo, ou ajuste os links.
-
-## Demo flow (portfolio)
-
-1. Usuario entra na home, pesquisa pratos e navega por categorias.
-2. Seleciona um produto, personaliza adicionais e salva no pedido.
-3. Revisa carrinho, ajusta quantidades e confirma checkout.
-4. Recebe codigo do pedido na tela de sucesso.
-5. Acompanha status e historico na area do cliente.
+QFOME e uma plataforma de delivery com foco em experiencia de compra rapida, visual forte e jornada completa de pedido.
 
 ## Visao do produto
 
-A proposta do QFOME e unir experiencia visual forte com fluxo rapido de compra.
+O QFOME foi pensado para cobrir o ciclo completo de compra em delivery:
 
-- Navegacao por categorias e cardapio completo.
+- Descoberta de pratos por categorias e busca.
 - Pagina de produto com personalizacao (quantidade, adicionais e observacoes).
-- Carrinho editavel com resumo de valores.
-- Checkout com dados de entrega e forma de pagamento.
-- Pos-checkout com codigo do pedido e tela de acompanhamento.
-- Area do cliente com historico e ultimo pedido.
+- Carrinho editavel com recalculo de totais.
+- Checkout com dados de entrega e pagamento.
+- Confirmacao com codigo do pedido.
+- Acompanhamento e historico na area do cliente.
+
+## Fluxo da experiencia
+
+1. Usuario entra na home e navega por categorias/cardapio.
+2. Seleciona um produto e personaliza o pedido.
+3. Salva no carrinho e segue para checkout.
+4. Finaliza pedido e recebe codigo de confirmacao.
+5. Acompanha status e consulta historico na area do cliente.
 
 ## Stack
 
@@ -58,10 +40,10 @@ A proposta do QFOME e unir experiencia visual forte com fluxo rapido de compra.
 
 ### Pronto e funcional
 
-- UX completa do fluxo de compra no frontend.
+- Fluxo completo de compra no frontend (UI/UX).
 - Login e cadastro conectando no backend (`/auth/register` e `/auth/login`).
-- Backend com endpoints de catalogo, checkout e acompanhamento ja implementados.
-- Testes de backend rodando com sucesso (`mvnw test`).
+- Endpoints de catalogo, checkout e acompanhamento ja implementados no backend.
+- Testes de backend passando com Maven Wrapper.
 
 ### Em evolucao
 
@@ -70,31 +52,31 @@ A proposta do QFOME e unir experiencia visual forte com fluxo rapido de compra.
 - Carrinho no backend ainda esta em modo placeholder.
 - Auth backend ainda e MVP em memoria (sem persistencia em banco).
 
-## Arquitetura atual
+## Arquitetura
 
 ### Frontend (Next.js)
 
-Fluxo principal em rotas:
+Principais rotas:
 
-- `/` home com destaques, categorias, busca e workspace de carrinho.
-- `/cardapio` listagem completa de pratos.
-- `/categoria/[slug]` pagina da categoria.
-- `/produto/[slug]` detalhe e personalizacao de produto.
+- `/` home com destaque, busca, categorias e resumo do pedido.
+- `/cardapio` lista completa de pratos.
+- `/categoria/[slug]` pratos por categoria.
+- `/produto/[slug]` detalhe e personalizacao.
 - `/pedido` carrinho.
 - `/checkout` finalizacao do pedido.
-- `/checkout/sucesso` confirmacao com codigo.
+- `/checkout/sucesso` confirmacao.
 - `/acompanhar-pedido` timeline do pedido.
 - `/entrar` login/cadastro.
 - `/cliente` area do cliente.
 - `/contato` e `/recuperar-acesso` suporte.
 
-Observacao importante:
+Observacao:
 
-- O frontend hoje usa dados locais de cardapio (`src/data/*`) e estado de sessao/pedido no `localStorage` para simular o fluxo ponta a ponta.
+- Atualmente o frontend usa dados locais (`src/data/*`) e estado no `localStorage` para simular o fluxo ponta a ponta.
 
 ### Backend (Spring Boot)
 
-Backend principal do projeto: `qfome-backend/`
+Backend principal: `qfome-backend/`
 
 Endpoints atuais:
 
@@ -112,7 +94,7 @@ Endpoints atuais:
 - `DELETE /carrinho/itens/{id}` (placeholder)
 - `GET /carrinho/{clienteId}` (placeholder)
 
-Limitacoes conhecidas do backend:
+Limitacoes conhecidas:
 
 - Nao ha seed automatica de categorias/produtos/clientes no banco.
 - Auth nao persiste em `clientes`; usuarios ficam em memoria enquanto a app roda.
@@ -128,20 +110,23 @@ qfome-frontend/
   pom.xml                 # base backend legada no diretorio raiz
 ```
 
-Nota: existe uma base Spring legada no diretorio raiz (`src/main/*` e `pom.xml`). Para o fluxo atual, considere `qfome-backend/` como backend principal.
+Nota:
+
+- Existe uma base Spring legada no diretorio raiz (`src/main/*` e `pom.xml`).
+- Para o fluxo atual, considere `qfome-backend/` como backend principal.
 
 ## Como rodar localmente
 
 ### 1) Backend
 
-No Windows (PowerShell/CMD):
+Windows (PowerShell/CMD):
 
 ```bash
 cd qfome-backend
 .\mvnw.cmd spring-boot:run
 ```
 
-No Linux/macOS:
+Linux/macOS:
 
 ```bash
 cd qfome-backend
