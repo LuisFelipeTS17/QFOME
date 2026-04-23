@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useMemo, useState, useEffect, useRef, type ChangeEvent } from "react";
 import { ArrowLeft, Banknote, CreditCard, QrCode, ShoppingBag, Truck } from "lucide-react";
 import { BrandText } from "@/components/brand-text";
 import { realizarCheckout } from "@/lib/api";
@@ -172,6 +172,34 @@ export default function CheckoutPage() {
       changeFor: "",
     };
   });
+  const cepTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const cepLimpo = form.cep.replace(/\D/g, "");
+    if (cepLimpo.length !== 8) return;
+
+    if (cepTimeout.current) clearTimeout(cepTimeout.current);
+
+    cepTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+        const data = await res.json();
+        if (data.erro) return;
+        setForm((prev) => ({
+          ...prev,
+          street:   data.logradouro ?? prev.street,
+          district: data.bairro     ?? prev.district,
+        }));
+      } catch {
+        // CEP inválido ou sem conexão, não bloqueia o form
+      }
+    }, 400);
+
+    return () => {
+      if (cepTimeout.current) clearTimeout(cepTimeout.current);
+    };
+  }, [form.cep]);
+
   const selectedPaymentVisual = paymentVisualByMethod[paymentMethod];
 
   const subtotal = useMemo(
