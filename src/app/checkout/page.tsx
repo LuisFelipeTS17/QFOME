@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { ArrowLeft, Banknote, CreditCard, QrCode, ShoppingBag, Truck } from "lucide-react";
 import { BrandText } from "@/components/brand-text";
+import { realizarCheckout } from "@/lib/api";
 
 type OrderExtra = {
   id: string;
@@ -27,6 +28,7 @@ type OrderItem = {
 };
 
 type UserProfile = {
+  id?: number;
   name: string;
   email: string;
   phone?: string;
@@ -191,7 +193,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const finalizeOrder = (event: FormEvent<HTMLFormElement>) => {
+  const finalizeOrder = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (items.length === 0) {
@@ -212,7 +214,19 @@ export default function CheckoutPage() {
       return;
     }
 
-    const orderCode = `QF-${Date.now().toString().slice(-6)}`;
+    const user = readUserProfile();
+    let orderCode = `QF-${Date.now().toString().slice(-6)}`;
+
+    if (user?.id) {
+      try {
+        const pedido = await realizarCheckout(user.id, paymentMethod, total);
+        orderCode = pedido.codigo;
+      } catch {
+        setFeedback("Erro ao registrar pedido no servidor. Tente novamente.");
+        return;
+      }
+    }
+
     const estimatedMinutes = Math.max(24, Math.min(48, 20 + items.length * 4));
     const orderRecord: OrderRecord = {
       code: orderCode,
@@ -244,6 +258,7 @@ export default function CheckoutPage() {
     localStorage.setItem(
       "qfome-user",
       JSON.stringify({
+        ...user,
         name: form.fullName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
