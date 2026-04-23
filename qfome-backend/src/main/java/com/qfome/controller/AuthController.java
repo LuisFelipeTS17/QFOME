@@ -1,6 +1,5 @@
 package com.qfome.controller;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -9,53 +8,72 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.qfome.model.Cliente;
+import com.qfome.model.enums.TipoUsuario;
+import com.qfome.repository.ClienteRepository;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-  private Map<String, Map<String, String>> users = new HashMap<>();
+    private final ClienteRepository clienteRepository;
 
-  @PostMapping("/register")
-  public ResponseEntity<?> register(@RequestBody Map<String, String> credentials) {
-    String email = credentials.get("email");
-    String password = credentials.get("password");
-    String name = credentials.get("name");
+    public AuthController(ClienteRepository clienteRepository) {
+        this.clienteRepository = clienteRepository;
+    }
 
-    if (email == null || password == null || name == null) {
-      return ResponseEntity.badRequest().body("Email, senha e nome são obrigatórios");
-    }
-    if (users.containsKey(email)) {
-      return ResponseEntity.status(409).body("Usuário já cadastrado");
-    }
-    Map<String, String> userData = new HashMap<>();
-    userData.put("password", password);
-    userData.put("name", name);
-    users.put(email, userData);
-    Map<String, Object> user = new HashMap<>();
-    user.put("email", email);
-    user.put("name", name);
-    user.put("message", "Usuário registrado com sucesso");
-    return ResponseEntity.ok(user);
-  }
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
+        String nome  = body.get("name");
+        String email = body.get("email");
+        String senha = body.get("password");
+        String telefone = body.get("phone");
 
-  @PostMapping("/login")
-  public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
-    String email = credentials.get("email");
-    String password = credentials.get("password");
+        if (nome == null || nome.isBlank() || email == null || email.isBlank() || senha == null || senha.isBlank()) {
+            return ResponseEntity.badRequest().body("Nome, e-mail e senha sao obrigatorios");
+        }
 
-    if (email == null || password == null) {
-      return ResponseEntity.badRequest().body("Email e senha são obrigatórios");
+        String emailNormalizado = email.trim().toLowerCase();
+
+        if (clienteRepository.existsByEmail(emailNormalizado)) {
+            return ResponseEntity.status(409).body("E-mail ja cadastrado");
+        }
+
+        Cliente cliente = Cliente.builder()
+                .nome(nome.trim())
+                .email(emailNormalizado)
+                .senha(senha)
+                .telefone(telefone != null ? telefone.trim() : null)
+                .tipo(TipoUsuario.CLIENTE)
+                .build();
+
+        Cliente salvo = clienteRepository.save(cliente);
+
+        return ResponseEntity.ok(Map.of(
+                "id",      salvo.getId(),
+                "name",    salvo.getNome(),
+                "email",   salvo.getEmail(),
+                "message", "Conta criada com sucesso"
+        ));
     }
-    if (users.containsKey(email)) {
-      Map<String, String> userData = users.get(email);
-      if (userData.get("password").equals(password)) {
-        Map<String, Object> user = new HashMap<>();
-        user.put("email", email);
-        user.put("name", userData.get("name"));
-        user.put("message", "Login realizado com sucesso");
-        return ResponseEntity.ok(user);
-      }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String senha = body.get("password");
+
+        if (email == null || email.isBlank() || senha == null || senha.isBlank()) {
+            return ResponseEntity.badRequest().body("E-mail e senha sao obrigatorios");
+        }
+
+        return clienteRepository.findByEmail(email.trim().toLowerCase())
+                .filter(c -> c.getSenha().equals(senha))
+                .map(c -> ResponseEntity.ok((Object) Map.of(
+                        "id",      c.getId(),
+                        "name",    c.getNome(),
+                        "email",   c.getEmail(),
+                        "message", "Login realizado com sucesso"
+                )))
+                .orElseGet(() -> ResponseEntity.status(401).body("Usuario ou senha invalidos"));
     }
-    return ResponseEntity.status(401).body("Usuário ou senha inválidos");
-  }
 }
