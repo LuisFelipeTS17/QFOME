@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { rastrearPedido } from "@/lib/api";
 import {
   ArrowLeft,
   Bike,
@@ -127,9 +128,16 @@ const deliveryStatusText = [
   "Pedido entregue. Bom apetite!",
 ];
 
+const backendStatusMap: Record<string, OrderRecord["status"]> = {
+  recebido: "recebido",
+  preparo:  "em_preparo",
+  entrega:  "saiu_para_entrega",
+  entregue: "entregue",
+};
+
 export default function AcompanharPedidoPage() {
   const [queryCode] = useState(() => getSearchCode());
-  const [order] = useState<OrderRecord | null>(() => {
+  const [order, setOrder] = useState<OrderRecord | null>(() => {
     const codeFromUrl = getSearchCode();
     const history = readOrderHistory();
     const lastOrder = readLastOrder();
@@ -141,6 +149,20 @@ export default function AcompanharPedidoPage() {
 
     return found ?? null;
   });
+
+  useEffect(() => {
+    const codigo = queryCode || order?.code;
+    if (!codigo) return;
+
+    rastrearPedido(codigo)
+      .then((dados) => {
+        const statusMapeado = backendStatusMap[dados.status] ?? "recebido";
+        setOrder((prev) =>
+          prev ? { ...prev, status: statusMapeado, total: dados.total } : prev,
+        );
+      })
+      .catch(() => {/* sem backend disponivel, mantém estado local */});
+  }, [queryCode, order?.code]);
 
   const activeStepIndex = useMemo(() => (order ? statusIndex[order.status] ?? 0 : -1), [order]);
   const deliveryProgress = useMemo(() => {

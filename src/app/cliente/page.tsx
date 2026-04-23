@@ -2,9 +2,11 @@
 
 import { ArrowLeft, Clock3, MapPin, ShoppingBag, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { getHistoricoPedidos } from "@/lib/api";
 
 type UserProfile = {
+  id?: number;
   name: string;
   email: string;
   phone?: string;
@@ -119,8 +121,24 @@ const statusLabel: Record<string, string> = {
 export default function ClientePage() {
   const [user] = useState<UserProfile | null>(() => readUser());
   const [lastOrder] = useState<LastOrder | null>(() => readLastOrder());
-  const [orderHistory] = useState<LastOrder[]>(() => readOrderHistory());
+  const [orderHistory, setOrderHistory] = useState<LastOrder[]>(() => readOrderHistory());
   const [cartItems] = useState<OrderItem[]>(() => readCartItems());
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getHistoricoPedidos(user.id)
+      .then((pedidos) => {
+        const mapeados: LastOrder[] = pedidos.map((p) => ({
+          code:          p.codigo,
+          createdAt:     p.dataCriacao,
+          paymentMethod: "pix",
+          total:         p.total,
+          status:        "recebido" as LastOrder["status"],
+        }));
+        setOrderHistory(mapeados);
+      })
+      .catch(() => {/* mantém histórico local se backend indisponível */});
+  }, [user?.id]);
   const handleLogout = () => {
     localStorage.removeItem("qfome-user");
     window.location.href = "/entrar";
