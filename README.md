@@ -13,7 +13,7 @@ QFOME e uma plataforma de delivery com foco em experiencia de compra rapida, vis
 
 ## Visao do produto
 
-O QFOME foi pensado para cobrir o ciclo completo de compra em delivery:
+O QFOME cobre o ciclo completo de compra em delivery:
 
 - Descoberta de pratos por categorias e busca.
 - Pagina de produto com personalizacao (quantidade, adicionais e observacoes).
@@ -34,23 +34,27 @@ O QFOME foi pensado para cobrir o ciclo completo de compra em delivery:
 
 - Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Lucide Icons.
 - Backend: Java 21, Spring Boot 3.5, Spring Web, Spring Data JPA, Validation, Actuator.
-- Banco: H2 em arquivo local.
+- Banco: H2 em arquivo local (`./data/qfome`).
 
-## Status real do MVP (abril/2026)
+## Status do MVP (maio/2026)
 
 ### Pronto e funcional
 
 - Fluxo completo de compra no frontend (UI/UX).
-- Login e cadastro conectando no backend (`/auth/register` e `/auth/login`).
-- Endpoints de catalogo, checkout e acompanhamento ja implementados no backend.
+- Login e cadastro conectados ao backend (`/auth/register` e `/auth/login`) com persistencia no banco.
+- Catalogo de 6 categorias e 25 produtos populado via `data.sql` no startup do backend.
+- CRUD completo de categorias e produtos via API REST.
+- CRUD de carrinho por cliente no backend.
+- Checkout conectado ao backend quando usuario autenticado.
+- Acompanhamento de pedido e historico do cliente chamando endpoints reais.
 - Testes de backend passando com Maven Wrapper.
 
 ### Em evolucao
 
-- Checkout e acompanhamento no frontend ainda usam `localStorage` como fonte principal.
-- Integracao frontend -> endpoints reais de catalogo/checkout/pedidos ainda nao esta completa.
-- Carrinho no backend ainda esta em modo placeholder.
-- Auth backend ainda e MVP em memoria (sem persistencia em banco).
+- Listagem de categorias e produtos no frontend ainda usa dados locais (`src/data/`); integracao com endpoints `/categorias` e `/produtos` pendente.
+- Carrinho no frontend usa `localStorage`; sincronizacao com o backend ainda nao esta ativa.
+- Checkout cria pedido local com codigo gerado no cliente quando usuario nao esta logado.
+- Senhas armazenadas em texto plano (sem hash); adequado para o MVP academico.
 
 ## Arquitetura
 
@@ -58,7 +62,7 @@ O QFOME foi pensado para cobrir o ciclo completo de compra em delivery:
 
 Principais rotas:
 
-- `/` home com destaque, busca, categorias e resumo do pedido.
+- `/` home com destaque, busca e categorias.
 - `/cardapio` lista completa de pratos.
 - `/categoria/[slug]` pratos por categoria.
 - `/produto/[slug]` detalhe e personalizacao.
@@ -67,69 +71,100 @@ Principais rotas:
 - `/checkout/sucesso` confirmacao.
 - `/acompanhar-pedido` timeline do pedido.
 - `/entrar` login/cadastro.
-- `/cliente` area do cliente.
+- `/cliente` area do cliente com historico.
 - `/contato` e `/recuperar-acesso` suporte.
 
-Observacao:
+Cliente HTTP centralizado em `src/lib/api.ts` (base: `NEXT_PUBLIC_API_URL`, padrao `http://localhost:8080`).
 
-- Atualmente o frontend usa dados locais (`src/data/*`) e estado no `localStorage` para simular o fluxo ponta a ponta.
+Status de integracao por funcionalidade:
+
+| Funcionalidade       | Fonte de dados          |
+|----------------------|-------------------------|
+| Categorias           | Local (`src/data/`)     |
+| Produtos             | Local (`src/data/`)     |
+| Login / Cadastro     | API real                |
+| Checkout             | API real (usuario logado) / local (anonimo) |
+| Acompanhar pedido    | API real                |
+| Historico do cliente | API real                |
+| Carrinho             | `localStorage`          |
 
 ### Backend (Spring Boot)
 
-Backend principal: `qfome-backend/`
+Backend em `qfome-backend/`.
 
-Endpoints atuais:
+Endpoints:
 
-- `GET /actuator/health`
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /categorias`
-- `GET /produtos`
-- `GET /produtos/{slug}`
-- `POST /checkout`
-- `GET /pedidos/cliente/{clienteId}`
-- `GET /pedidos/acompanhar/{codigo}`
-- `POST /carrinho/itens` (placeholder)
-- `PATCH /carrinho/itens/{id}` (placeholder)
-- `DELETE /carrinho/itens/{id}` (placeholder)
-- `GET /carrinho/{clienteId}` (placeholder)
+```
+GET    /actuator/health
 
-Limitacoes conhecidas:
+POST   /auth/register
+POST   /auth/login
 
-- Nao ha seed automatica de categorias/produtos/clientes no banco.
-- Auth nao persiste em `clientes`; usuarios ficam em memoria enquanto a app roda.
-- `POST /checkout` exige `clienteId` existente no banco.
+GET    /categorias
+GET    /categorias/{id}
+POST   /categorias
+PUT    /categorias/{id}
+DELETE /categorias/{id}
+
+GET    /produtos
+GET    /produtos/{slug}
+POST   /produtos
+PUT    /produtos/{id}
+DELETE /produtos/{id}
+
+GET    /carrinho/{clienteId}
+POST   /carrinho/{clienteId}/itens
+PATCH  /carrinho/{clienteId}/itens/{itemId}
+DELETE /carrinho/{clienteId}/itens/{itemId}
+DELETE /carrinho/{clienteId}/limpar
+
+POST   /checkout
+
+GET    /pedidos/cliente/{clienteId}
+GET    /pedidos/acompanhar/{codigo}
+```
+
+Banco de dados:
+
+- H2 modo arquivo em `./data/qfome` (schema `update` + `data.sql`).
+- `data.sql` popula 6 categorias e 25 produtos no startup.
+- `clientes` persistido em banco.
+- H2 console acessivel em `http://localhost:8080/h2-console` (requer habilitacao via env).
 
 ## Estrutura do repositorio
 
 ```text
 qfome-frontend/
-  src/                    # app Next.js
-  qfome-backend/          # backend Spring Boot principal
-  documentacao/           # notas de andamento e riscos
-  pom.xml                 # base backend legada no diretorio raiz
+  src/
+    app/          # paginas e rotas Next.js
+    data/         # dados estaticos de catalogo (temporario)
+    lib/
+      api.ts      # cliente HTTP centralizado
+  qfome-backend/  # backend Spring Boot
+    src/main/
+      java/com/qfome/
+        controller/   # AuthController, CategoriaController, ProdutoController,
+                      # CarrinhoController, CheckoutController, PedidoAcompanhamentoController
+        model/        # Cliente, Categoria, Produto, Carrinho, ItemCarrinho, Pedido, ItemPedido
+        repository/   # interfaces JPA
+        service/      # logica de negocio
+      resources/
+        application.yml
+        data.sql      # seed inicial de catalogo
+  documentacao/   # notas de andamento e riscos
 ```
-
-Nota:
-
-- Existe uma base Spring legada no diretorio raiz (`src/main/*` e `pom.xml`).
-- Para o fluxo atual, considere `qfome-backend/` como backend principal.
 
 ## Como rodar localmente
 
 ### 1) Backend
 
-Windows (PowerShell/CMD):
-
 ```bash
 cd qfome-backend
+
+# Windows
 .\mvnw.cmd spring-boot:run
-```
 
-Linux/macOS:
-
-```bash
-cd qfome-backend
+# Linux/macOS
 ./mvnw spring-boot:run
 ```
 
@@ -137,9 +172,8 @@ Backend em `http://localhost:8080`.
 
 ### 2) Frontend
 
-Na raiz `qfome-frontend`:
-
 ```bash
+# na raiz qfome-frontend
 npm install
 npm run dev
 ```
@@ -157,27 +191,21 @@ APP_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 
 Configuracao completa: `qfome-backend/src/main/resources/application.yml`
 
-- H2 console: `http://localhost:8080/h2-console` (habilitacao via env).
-
-## Qualidade e testes
-
-Backend:
+## Testes
 
 ```bash
 cd qfome-backend
 .\mvnw.cmd test
 ```
 
-Ja existe teste de integracao para health endpoint (`/actuator/health`).
+Teste de integracao para `GET /actuator/health` incluido.
 
-## Roadmap sugerido
+## Roadmap
 
-1. Conectar frontend aos endpoints reais de `categorias` e `produtos`.
-2. Migrar checkout do `localStorage` para `POST /checkout`.
-3. Persistir auth em banco (cliente) e remover mapa em memoria.
-4. Implementar carrinho backend de fato (CRUD + regras de negocio).
-5. Adicionar seed inicial de catalogo para ambiente de desenvolvimento.
-6. Publicar colecao de testes de API e contrato de integracao frontend/backend.
+1. Conectar frontend aos endpoints `/categorias` e `/produtos` (remover dados locais).
+2. Sincronizar carrinho do `localStorage` com `GET/POST/PATCH/DELETE /carrinho/{clienteId}`.
+3. Adicionar hash de senha (BCrypt) na autenticacao.
+4. Publicar colecao Postman/Insomnia com os contratos de API.
 
 ## Documentacao complementar
 

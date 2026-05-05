@@ -169,7 +169,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <HeaderAccountAction />
             <Link
-              href="/#pedido"
+              href="/pedido"
               className="inline-flex items-center gap-2 rounded-2xl bg-[var(--qfome-brand)] px-4 py-2 text-sm font-bold text-white shadow-[0_10px_22px_rgba(190,32,47,0.3)] transition hover:bg-[var(--qfome-brand-deep)]"
             >
               <ShoppingBag size={16} />
