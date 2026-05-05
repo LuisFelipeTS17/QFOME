@@ -1,14 +1,30 @@
 # Roteiro de Pitch — QFOME
 ### 8 pessoas · 1 minuto cada
 
-> **Para quem faz a demo (Pessoas 3, 4, 5 e 6):**
-> Abra este arquivo no navegador ou num editor que renderize Markdown.
-> Os links de rota são clicáveis — clique neles para navegar direto para a tela certa enquanto grava.
+> **Divisão feita com base nos commits de cada um no repositório.**
+> Cada pessoa apresenta a parte que ela própria construiu no projeto.
+
+| Parte | Responsável | GitHub |
+|-------|-------------|--------|
+| 1 — Abertura e Problema | Luis Felipe | @LuisFelipeTS17 |
+| 2 — Solução e Proposta de Valor | João | @moreirajoaopaulo951 |
+| 3 — Demo: Home e Cardápio | Eric | @EricSouzaDosSantos |
+| 4 — Demo: Produto e Carrinho | Henrique | @hgolfetto |
+| 5 — Demo: Checkout e Confirmação | Lorenzo | LORENZO MAFRA |
+| 6 — Demo: Acompanhar e Área do Cliente | Brenda | @Brenda-cslima |
+| 7 — Mercado e Modelo de Negócio | Fernando | @fernando-cruzx |
+| 8 — Fechamento e Pedido | *(a definir)* | — |
+
+---
+
+> **Para quem faz a demo (Partes 3, 4, 5 e 6):**
+> Os links de rota são clicáveis — abra este arquivo no VS Code ou GitHub e clique direto para navegar enquanto grava a tela.
 > Backend precisa estar rodando em `http://localhost:8080` e frontend em `http://localhost:3000`.
 
 ---
 
-## Pessoa 1 — Abertura e Problema de Mercado
+## Parte 1 — Abertura e Problema de Mercado
+### Luis Felipe · @LuisFelipeTS17
 
 O mercado de delivery no Brasil movimenta mais de **60 bilhões de reais por ano**. O iFood sozinho processa mais de 70 milhões de pedidos por mês. Os números são impressionantes. Mas existe um problema que esses números escondem: **o usuário está insatisfeito**.
 
@@ -18,7 +34,8 @@ Existe um espaço real para uma plataforma que faça isso diferente. Uma platafo
 
 ---
 
-## Pessoa 2 — Solução e Proposta de Valor
+## Parte 2 — Solução e Proposta de Valor
+### João · @moreirajoaopaulo951
 
 O QFOME é uma plataforma de delivery construída com uma premissa simples: **o usuário não deveria precisar de tutorial para fazer um pedido**.
 
@@ -30,7 +47,8 @@ Agora deixa a gente mostrar o produto funcionando.
 
 ---
 
-## Pessoa 3 — Demo: Descoberta
+## Parte 3 — Demo: Descoberta
+### Eric · @EricSouzaDosSantos
 
 > **TELA:** [http://localhost:3000](http://localhost:3000)
 
@@ -38,25 +56,26 @@ Essa é a primeira tela que o nosso cliente vê. Sem cadastro obrigatório, sem 
 
 Trabalhamos com seis categorias pensadas para cobrir diferentes perfis de consumidor — de quem quer uma refeição caseira até quem está no modo fit, passando por grelhados, peixes, sopas e sobremesas. Cada categoria tem identidade visual própria e uma curadoria de pratos cuidadosa.
 
-> *(clicar em uma categoria — ex: "Caseira")* → [http://localhost:3000/cardapio](http://localhost:3000/cardapio)
+> *(clicar em uma categoria)* → [http://localhost:3000/cardapio](http://localhost:3000/cardapio)
 
 No cardápio completo, a navegação é fluida. O usuário filtra por categoria, encontra o que quer em segundos. Não tem algoritmo empurrando o produto mais caro nem anúncio patrocinado no meio da lista. **O que aparece aqui é o que é bom, não o que pagou pra aparecer.** Essa é uma das razões pelas quais nosso usuário confia na plataforma.
 
-> *(clicar em qualquer card de prato para a Pessoa 4 assumir)*
+> *(clicar em qualquer card de prato para a Parte 4 assumir)*
 
 ---
 
-## Pessoa 4 — Demo: Escolha e Carrinho
+## Parte 4 — Demo: Escolha e Carrinho
+### Henrique · @hgolfetto
 
-> **TELA:** página de produto — ex: [http://localhost:3000/produto/frango-grelhado-ao-limao](http://localhost:3000/produto/frango-grelhado-ao-limao)
-> *(o slug exato vai depender do produto que você clicou na tela anterior)*
+> **TELA:** página de produto
+> *(o produto que foi clicado na parte anterior)*
 
 Aqui está a página de detalhe do produto. O usuário pode ajustar a quantidade usando os botões — o total recalcula em tempo real. Logo abaixo tem os adicionais disponíveis, que ele pode marcar ou desmarcar, e um campo de observação livre pra deixar um recado pro restaurante.
 
 Tudo isso acontece instantaneamente, sem loading desnecessário. Quando o usuário clica em **"Adicionar ao pedido"**, o item é salvo e um feedback aparece na tela.
 
 > *(clicar em "Adicionar ao pedido" — aguardar o feedback aparecer)*
-> *(depois clicar em "Meu pedido" no topo da página)* → [http://localhost:3000/pedido](http://localhost:3000/pedido)
+> *(clicar em "Meu pedido" no topo da página)* → [http://localhost:3000/pedido](http://localhost:3000/pedido)
 
 No carrinho, o cliente tem controle total. Pode adicionar mais itens, remover o que não quer, ajustar quantidades. O total atualiza na hora. **Não tem surpresa no valor final.**
 
@@ -66,7 +85,8 @@ Esse nível de controle e clareza é o que diferencia uma experiência frustrant
 
 ---
 
-## Pessoa 5 — Demo: Checkout e Confirmação
+## Parte 5 — Demo: Checkout e Confirmação
+### Lorenzo · LORENZO MAFRA
 
 > **TELA:** [http://localhost:3000/checkout](http://localhost:3000/checkout)
 > *(chega aqui pelo botão "Ir para checkout" do carrinho)*
@@ -81,12 +101,13 @@ Pedido confirmado. O cliente recebe um código único do pedido e a confirmaçã
 
 Esse momento — a confirmação do pedido — é o momento de maior satisfação do usuário. A gente tratou ele com o cuidado que merece.
 
-> *(anotar o código que aparece na tela — vai ser usado na Pessoa 6)*
+> *(anotar o código que aparece na tela — vai ser usado na Parte 6)*
 > *(clicar em "Acompanhar")*
 
 ---
 
-## Pessoa 6 — Demo: Acompanhamento e Fidelização
+## Parte 6 — Demo: Acompanhamento e Fidelização
+### Brenda · @Brenda-cslima
 
 > **TELA:** [http://localhost:3000/acompanhar-pedido](http://localhost:3000/acompanhar-pedido)
 > *(chega aqui pelo botão "Acompanhar" da tela de sucesso)*
@@ -95,11 +116,8 @@ Com o código do pedido, o usuário acessa o acompanhamento em tempo real. Uma t
 
 Transparência gera confiança. Confiança gera retenção.
 
-> *(clicar no ícone de conta no topo e fazer login — ou ir direto para /entrar)*
-> **TELA:** [http://localhost:3000/entrar](http://localhost:3000/entrar)
-> *(usar o usuário de demo cadastrado antes da apresentação)*
-
-O login também é integrado de verdade. Ao entrar com email e senha, a plataforma autentica o usuário e salva a sessão.
+> *(clicar no ícone de conta no topo)* → [http://localhost:3000/entrar](http://localhost:3000/entrar)
+> *(fazer login com o usuário de demo cadastrado antes da apresentação)*
 
 > **TELA:** [http://localhost:3000/cliente](http://localhost:3000/cliente)
 > *(o login redireciona automaticamente para cá)*
@@ -108,7 +126,8 @@ Na área do cliente, o histórico de pedidos aparece completo. Tudo que o usuár
 
 ---
 
-## Pessoa 7 — Mercado e Modelo de Negócio
+## Parte 7 — Mercado e Modelo de Negócio
+### Fernando · @fernando-cruzx
 
 O mercado de food delivery no Brasil está em expansão contínua. Só em 2024, o setor cresceu mais de 15% em volume de pedidos. A penetração ainda é baixa fora dos grandes centros — o que significa que o mercado ainda vai crescer muito antes de saturar.
 
@@ -120,7 +139,8 @@ Com uma base de clientes fidelizados e baixo custo de retenção, a unidade econ
 
 ---
 
-## Pessoa 8 — Por Que Nós e o Pedido
+## Parte 8 — Fechamento e Pedido
+### *(a definir)*
 
 Por que o QFOME vai dar certo? Três razões.
 
@@ -133,22 +153,6 @@ Por que o QFOME vai dar certo? Três razões.
 O que a gente está pedindo hoje é simples: **acredite no problema, acredite na solução, acredite no time**. O QFOME está pronto pra crescer. A pergunta é se você quer fazer parte disso.
 
 Obrigado.
-
----
-
-## Guia rápido de navegação — só para quem apresenta a demo
-
-| Pessoa | Rota | Link direto |
-|--------|------|-------------|
-| 3 | Home | [localhost:3000](http://localhost:3000) |
-| 3 | Cardápio | [localhost:3000/cardapio](http://localhost:3000/cardapio) |
-| 4 | Produto (exemplo) | [localhost:3000/produto/frango-grelhado-ao-limao](http://localhost:3000/produto/frango-grelhado-ao-limao) |
-| 4 | Carrinho | [localhost:3000/pedido](http://localhost:3000/pedido) |
-| 5 | Checkout | [localhost:3000/checkout](http://localhost:3000/checkout) |
-| 5 | Confirmação | [localhost:3000/checkout/sucesso](http://localhost:3000/checkout/sucesso) |
-| 6 | Acompanhar | [localhost:3000/acompanhar-pedido](http://localhost:3000/acompanhar-pedido) |
-| 6 | Login | [localhost:3000/entrar](http://localhost:3000/entrar) |
-| 6 | Área do cliente | [localhost:3000/cliente](http://localhost:3000/cliente) |
 
 ---
 
