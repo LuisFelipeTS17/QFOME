@@ -33,6 +33,7 @@ O QFOME cobre o ciclo completo de compra em delivery:
 ## Stack
 
 - Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Lucide Icons.
+- Mobile: Expo SDK 57, React Native 0.86, Expo Router, TypeScript (`qfome-mobile/`).
 - Backend: Java 21, Spring Boot 3.5, Spring Web, Spring Data JPA, Validation, Actuator.
 - Banco: H2 em arquivo local (`./data/qfome`).
 
@@ -140,6 +141,11 @@ qfome-frontend/
     data/         # dados estaticos de catalogo (temporario)
     lib/
       api.ts      # cliente HTTP centralizado
+  qfome-mobile/   # app mobile Expo / React Native
+    src/
+      app/        # rotas Expo Router (12 telas)
+      components/ # UI compartilhada
+      theme/      # paleta e fontes portadas do site
   qfome-backend/  # backend Spring Boot
     src/main/
       java/com/qfome/
@@ -179,6 +185,17 @@ npm run dev
 ```
 
 Frontend em `http://localhost:3000`.
+
+### 3) Mobile
+
+```bash
+cd qfome-mobile
+npm install
+npx expo start
+```
+
+Leia o QR Code com o app Expo Go, ou tecle `a` (Android), `i` (iOS) ou `w` (web).
+Detalhes em `qfome-mobile/README.md`.
 
 ## Variaveis de ambiente (backend)
 

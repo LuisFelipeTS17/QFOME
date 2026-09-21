@@ -66,5 +66,6 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-# banco H2 local
-data/
+# banco H2 local (jdbc:h2:file:./data/qfome, relativo a onde o backend roda)
+/data/
+/qfome-backend/data/
