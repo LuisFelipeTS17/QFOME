@@ -1,31 +1,32 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { LockKeyhole, Mail, Phone, UserRound } from "lucide-react-native";
+import { LockKeyhole, Mail, UserRound } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Field } from "@/components/field";
 import { BackButton, Button, FeedbackBox, SurfaceCard } from "@/components/ui";
-import { saveUser } from "@/lib/storage";
+import { login, register, type UsuarioLogado } from "@/lib/api";
+import { saveSessao } from "@/lib/session";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
 
 type Tab = "login" | "signup";
 
 /**
- * Login e cadastro — equivale a `/entrar`. A sessao e gravada localmente;
- * trocar por `login()`/`register()` de `@/lib/api` liga no backend.
+ * Login e cadastro — equivale a `/entrar`. Autentica no backend e grava o
+ * usuario na tabela `sessao` do SQLite local.
  */
 export default function EntrarScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("login");
   const [feedback, setFeedback] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
-  const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
 
   const handleLogin = async () => {
@@ -34,10 +35,10 @@ export default function EntrarScreen() {
       return;
     }
 
-    const email = loginEmail.trim().toLowerCase();
-    await saveUser({ name: email.split("@")[0], email });
-    setFeedback("Login realizado. Redirecionando para sua area de cliente...");
-    router.push("/cliente");
+    await autenticar(
+      () => login(loginEmail.trim().toLowerCase(), loginPassword),
+      "Login realizado. Redirecionando para sua area de cliente...",
+    );
   };
 
   const handleSignup = async () => {
@@ -46,13 +47,29 @@ export default function EntrarScreen() {
       return;
     }
 
-    await saveUser({
-      name: signupName.trim(),
-      email: signupEmail.trim().toLowerCase(),
-      phone: signupPhone.trim(),
-    });
-    setFeedback("Conta criada com sucesso. Redirecionando para sua area de cliente...");
-    router.push("/cliente");
+    await autenticar(
+      () => register(signupName.trim(), signupEmail.trim().toLowerCase(), signupPassword),
+      "Conta criada com sucesso. Redirecionando para sua area de cliente...",
+    );
+  };
+
+  const autenticar = async (chamada: () => Promise<UsuarioLogado>, sucesso: string) => {
+    setEnviando(true);
+    try {
+      const usuario = await chamada();
+      await saveSessao({
+        usuarioId: usuario.id,
+        nome: usuario.name,
+        email: usuario.email,
+        perfil: usuario.perfil,
+      });
+      setFeedback(sucesso);
+      router.push("/cliente");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Nao foi possivel entrar agora.");
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -120,7 +137,7 @@ export default function EntrarScreen() {
             >
               <Text style={styles.forgotLabel}>ESQUECEU SEU LOGIN?</Text>
             </Pressable>
-            <Button label="Entrar na conta" onPress={handleLogin} />
+            <Button label="Entrar na conta" onPress={handleLogin} disabled={enviando} />
           </View>
         ) : (
           <View style={styles.form}>
@@ -145,16 +162,6 @@ export default function EntrarScreen() {
               autoCapitalize="none"
             />
             <Field
-              icon={<Phone size={16} color="#8b5145" />}
-              value={signupPhone}
-              onChangeText={(value) => {
-                setSignupPhone(value);
-                setFeedback("");
-              }}
-              placeholder="Telefone (opcional)"
-              keyboardType="phone-pad"
-            />
-            <Field
               icon={<LockKeyhole size={16} color="#8b5145" />}
               value={signupPassword}
               onChangeText={(value) => {
@@ -164,7 +171,7 @@ export default function EntrarScreen() {
               placeholder="Crie uma senha"
               secureTextEntry
             />
-            <Button label="Criar conta" onPress={handleSignup} />
+            <Button label="Criar conta" onPress={handleSignup} disabled={enviando} />
           </View>
         )}
 

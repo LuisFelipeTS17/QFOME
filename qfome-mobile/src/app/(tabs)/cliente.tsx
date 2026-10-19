@@ -4,33 +4,20 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Clock3, MapPin, ShoppingBag, UserRound } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Button, DarkCard, DarkPanel, SurfaceCard, WhiteCard } from "@/components/ui";
+import { getHistoricoPedidos, type Pedido } from "@/lib/api";
 import { formatDateTime, formatPrice } from "@/lib/format";
-import {
-  clearUser,
-  readOrderItems,
-  readOrderHistory,
-  readLastOrder,
-  readUser,
-  type OrderItem,
-  type OrderRecord,
-  type UserProfile,
-} from "@/lib/storage";
+import { statusLabel } from "@/lib/pedido";
+import { clearSessao, readSessao, type Sessao } from "@/lib/session";
+import { readOrderItems, type OrderItem } from "@/lib/storage";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
-
-const statusLabel: Record<string, string> = {
-  recebido: "Recebido",
-  em_preparo: "Em preparo",
-  saiu_para_entrega: "Saiu para entrega",
-  entregue: "Entregue",
-};
 
 /** Area do cliente — perfil, historico e resumo rapido (rota `/cliente`). */
 export default function ClienteScreen() {
   const router = useRouter();
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [history, setHistory] = useState<OrderRecord[]>([]);
-  const [lastOrder, setLastOrder] = useState<OrderRecord | null>(null);
+  const [user, setUser] = useState<Sessao | null>(null);
+  const [history, setHistory] = useState<Pedido[]>([]);
+  const [historyError, setHistoryError] = useState("");
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -38,18 +25,30 @@ export default function ClienteScreen() {
     useCallback(() => {
       let active = true;
 
-      Promise.all([readUser(), readOrderHistory(), readLastOrder(), readOrderItems()]).then(
-        ([savedUser, savedHistory, savedLast, savedCart]) => {
-          if (!active) {
-            return;
+      (async () => {
+        const [sessao, savedCart] = await Promise.all([readSessao(), readOrderItems()]);
+        if (!active) {
+          return;
+        }
+        setUser(sessao);
+        setCartItems(savedCart);
+        setLoaded(true);
+
+        if (!sessao) {
+          return;
+        }
+        try {
+          const pedidos = await getHistoricoPedidos(sessao.usuarioId);
+          if (active) {
+            setHistory(pedidos);
+            setHistoryError("");
           }
-          setUser(savedUser);
-          setHistory(savedHistory);
-          setLastOrder(savedLast);
-          setCartItems(savedCart);
-          setLoaded(true);
-        },
-      );
+        } catch (error) {
+          if (active) {
+            setHistoryError(error instanceof Error ? error.message : "Historico indisponivel.");
+          }
+        }
+      })();
 
       return () => {
         active = false;
@@ -64,11 +63,12 @@ export default function ClienteScreen() {
   );
 
   const recentOrders = useMemo(() => history.slice(0, 6), [history]);
-  const latestOrder = recentOrders[0] ?? lastOrder;
+  const latestOrder = recentOrders[0];
 
   const handleLogout = async () => {
-    await clearUser();
+    await clearSessao();
     setUser(null);
+    setHistory([]);
     router.push("/entrar");
   };
 
@@ -97,7 +97,7 @@ export default function ClienteScreen() {
         <View style={styles.headerRow}>
           <View style={styles.flex}>
             <Text style={styles.eyebrow}>AREA DO CLIENTE</Text>
-            <Text style={styles.title}>Ola, {user.name.split(" ")[0]}</Text>
+            <Text style={styles.title}>Ola, {user.nome.split(" ")[0]}</Text>
           </View>
           <Pressable
             onPress={handleLogout}
@@ -112,16 +112,16 @@ export default function ClienteScreen() {
         <View style={styles.profileGrid}>
           <WhiteCard style={styles.profileCard}>
             <Text style={styles.fieldLabel}>NOME</Text>
-            <Text style={styles.fieldValue}>{user.name}</Text>
+            <Text style={styles.fieldValue}>{user.nome}</Text>
           </WhiteCard>
           <WhiteCard style={styles.profileCard}>
             <Text style={styles.fieldLabel}>E-MAIL</Text>
             <Text style={styles.fieldValue}>{user.email}</Text>
           </WhiteCard>
           <WhiteCard style={styles.profileCard}>
-            <Text style={styles.fieldLabel}>TELEFONE</Text>
+            <Text style={styles.fieldLabel}>PERFIL</Text>
             <Text style={styles.fieldValue}>
-              {user.phone?.trim() ? user.phone : "Nao informado"}
+              {user.perfil === "ADMIN" ? "Administrador" : "Cliente"}
             </Text>
           </WhiteCard>
         </View>
@@ -146,22 +146,22 @@ export default function ClienteScreen() {
           <Text style={styles.fieldLabel}>HISTORICO DE PEDIDOS</Text>
 
           {recentOrders.length === 0 ? (
-            <Text style={styles.emptyHistory}>Nenhum pedido finalizado ainda.</Text>
+            <Text style={styles.emptyHistory}>
+              {historyError || "Nenhum pedido finalizado ainda."}
+            </Text>
           ) : (
             <View style={styles.historyList}>
               {recentOrders.map((order) => (
-                <View key={`${order.code}-${order.createdAt}`} style={styles.historyRow}>
+                <View key={order.codigo} style={styles.historyRow}>
                   <View style={styles.flex}>
-                    <Text style={styles.historyCode}>{order.code}</Text>
-                    <Text style={styles.historyDate}>{formatDateTime(order.createdAt)}</Text>
-                    <Text style={styles.historyStatus}>
-                      {statusLabel[order.status ?? "recebido"] ?? "Recebido"}
-                    </Text>
+                    <Text style={styles.historyCode}>{order.codigo}</Text>
+                    <Text style={styles.historyDate}>{formatDateTime(order.criadoEm)}</Text>
+                    <Text style={styles.historyStatus}>{statusLabel[order.status]}</Text>
                   </View>
                   <View style={styles.historyRight}>
                     <Text style={styles.historyTotal}>{formatPrice(order.total)}</Text>
                     <Pressable
-                      onPress={() => router.push(`/acompanhar-pedido?codigo=${order.code}`)}
+                      onPress={() => router.push(`/acompanhar-pedido?codigo=${order.codigo}`)}
                     >
                       <Text style={styles.historyLink}>ACOMPANHAR</Text>
                     </Pressable>
@@ -183,20 +183,18 @@ export default function ClienteScreen() {
         {latestOrder ? (
           <DarkCard style={styles.panelCard}>
             <Text style={styles.panelLabel}>ULTIMO PEDIDO</Text>
-            <Text style={styles.panelStrong}>Codigo {latestOrder.code}</Text>
+            <Text style={styles.panelStrong}>Codigo {latestOrder.codigo}</Text>
             <View style={styles.panelMetaRow}>
               <Clock3 size={13} color={colors.panelInkSoft} />
-              <Text style={styles.panelText}>{formatDateTime(latestOrder.createdAt)}</Text>
+              <Text style={styles.panelText}>{formatDateTime(latestOrder.criadoEm)}</Text>
             </View>
             <View style={styles.panelMetaRow}>
               <MapPin size={13} color={colors.panelInkSoft} />
-              <Text style={styles.panelText}>
-                {statusLabel[latestOrder.status ?? "recebido"] ?? "Recebido"}
-              </Text>
+              <Text style={styles.panelText}>{statusLabel[latestOrder.status]}</Text>
             </View>
             <Text style={styles.panelValue}>{formatPrice(latestOrder.total)}</Text>
             <Pressable
-              onPress={() => router.push(`/acompanhar-pedido?codigo=${latestOrder.code}`)}
+              onPress={() => router.push(`/acompanhar-pedido?codigo=${latestOrder.codigo}`)}
             >
               <Text style={styles.panelLink}>ACOMPANHAR PEDIDO</Text>
             </Pressable>

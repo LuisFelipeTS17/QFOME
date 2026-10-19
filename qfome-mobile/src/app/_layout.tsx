@@ -55,8 +55,8 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="categoria/[slug]" />
-        <Stack.Screen name="produto/[slug]" />
+        <Stack.Screen name="categoria/[id]" />
+        <Stack.Screen name="produto/[id]" />
         <Stack.Screen name="checkout/index" />
         <Stack.Screen name="checkout/sucesso" />
         <Stack.Screen name="acompanhar-pedido" />

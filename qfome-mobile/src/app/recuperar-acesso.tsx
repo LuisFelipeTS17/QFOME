@@ -4,7 +4,7 @@ import { Mail, ShieldCheck } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Field } from "@/components/field";
 import { BackButton, Button, FeedbackBox, SurfaceCard } from "@/components/ui";
-import { readUser } from "@/lib/storage";
+import { readSessao } from "@/lib/session";
 import { colors } from "@/theme/colors";
 import { fonts, tracking } from "@/theme/typography";
 
@@ -16,10 +16,10 @@ export default function RecuperarAcessoScreen() {
   const [feedback, setFeedback] = useState("");
 
   const handleRecovery = async () => {
-    const storedUser = await readUser();
+    const storedUser = await readSessao();
 
     if (!storedUser) {
-      setFeedback("Nenhuma conta cadastrada neste aparelho. Crie sua conta para continuar.");
+      setFeedback("Nenhuma conta conectada neste aparelho. Entre ou crie sua conta para continuar.");
       return;
     }
 
@@ -29,7 +29,7 @@ export default function RecuperarAcessoScreen() {
     }
 
     setFeedback(
-      `Pronto! Encontramos sua conta (${storedUser.name}). No backend, aqui entra o envio real do link de recuperacao.`,
+      `Pronto! Encontramos sua conta (${storedUser.nome}). No backend, aqui entra o envio real do link de recuperacao.`,
     );
   };
 
