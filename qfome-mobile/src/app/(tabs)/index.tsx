@@ -24,10 +24,10 @@ import {
 import { Screen } from "@/components/screen";
 import { BrandText } from "@/components/brand-text";
 import { HeroSearch } from "@/components/hero-search";
-import { ProductCard } from "@/components/product-card";
+import { CatalogStatus } from "@/components/catalog-status";
+import { ProductCard, toCardData } from "@/components/product-card";
 import { Button, DarkCard, SurfaceCard, WhiteCard } from "@/components/ui";
-import { menuCategories } from "@/data/menu-categories";
-import { menuProducts } from "@/data/menu-products";
+import { useCatalogo } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import { categoryTones, colors, gradients } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
@@ -46,7 +46,8 @@ const spotlightDeals: {
   subtitle: string;
   discount: string;
   tone: readonly [string, string];
-  href: Href;
+  /** slug da categoria de destino (resolvido para o id do backend); sem slug abre o cardapio */
+  categorySlug?: string;
   image: string;
 }[] = [
   {
@@ -54,7 +55,7 @@ const spotlightDeals: {
     subtitle: "2 pratos + 1 bebida",
     discount: "ate 30% OFF",
     tone: ["#d72638", "#8f1424"] as const,
-    href: "/categoria/caseira",
+    categorySlug: "caseira",
     image:
       "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
   },
@@ -63,7 +64,7 @@ const spotlightDeals: {
     subtitle: "Escolha 1 proteina + 3 acompanhamentos",
     discount: "frete gratis hoje",
     tone: ["#f29d35", "#cb5b1f"] as const,
-    href: "/categoria/grelhados",
+    categorySlug: "grelhados",
     image:
       "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1200&q=80",
   },
@@ -72,7 +73,6 @@ const spotlightDeals: {
     subtitle: "Combo jantar para 2 pessoas",
     discount: "cupom QFOME10",
     tone: ["#3f2624", "#26120f"] as const,
-    href: "/cardapio",
     image:
       "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1200&q=80",
   },
@@ -92,6 +92,15 @@ const heroStats = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const catalogo = useCatalogo();
+
+  const destaques = catalogo.produtos.filter((product) => product.destaque);
+  const featuredProducts = destaques.length > 0 ? destaques : catalogo.produtos.slice(0, 5);
+
+  const hrefDaOferta = (categorySlug?: string): Href => {
+    const category = catalogo.categorias.find((item) => item.slug === categorySlug);
+    return category ? `/categoria/${category.id}` : "/cardapio";
+  };
 
   return (
     <Screen bottomInset={24}>
@@ -151,7 +160,7 @@ export default function HomeScreen() {
         </Text>
 
         <View style={styles.heroSearch}>
-          <HeroSearch />
+          <HeroSearch categorias={catalogo.categorias} produtos={catalogo.produtos} />
         </View>
 
         <View style={styles.statsRow}>
@@ -214,20 +223,25 @@ export default function HomeScreen() {
         <Text style={styles.sectionEyebrow}>CATEGORIAS</Text>
         <Text style={styles.sectionTitle}>Explore sabores</Text>
 
+        <CatalogStatus estado={catalogo} />
+
         <View style={styles.categoryGrid}>
-          {menuCategories.map((category) => {
+          {catalogo.categorias.map((category) => {
             const Icon = categoryIcons[category.slug] ?? UtensilsCrossed;
             const tone = categoryTones[category.slug] ?? [colors.brand, colors.brandDeep];
+            const dishCount = catalogo.produtos.filter(
+              (product) => product.categoriaId === category.id,
+            ).length;
 
             return (
               <Pressable
-                key={category.slug}
-                onPress={() => router.push(`/categoria/${category.slug}`)}
+                key={category.id}
+                onPress={() => router.push(`/categoria/${category.id}`)}
                 style={({ pressed }) => [styles.categoryCard, pressed && styles.pressed]}
               >
                 <View style={styles.categoryImageWrap}>
                   <Image
-                    source={{ uri: category.image }}
+                    source={{ uri: category.imagem }}
                     style={styles.categoryImage}
                     resizeMode="cover"
                   />
@@ -241,13 +255,13 @@ export default function HomeScreen() {
                     <Icon size={17} color={colors.white} />
                   </View>
                 </View>
-                <Text style={styles.categoryName}>{category.name}</Text>
+                <Text style={styles.categoryName}>{category.nome}</Text>
                 <Text style={styles.categoryDescription} numberOfLines={2}>
-                  {category.description}
+                  {category.descricao}
                 </Text>
                 <View style={styles.categoryLink}>
                   <Text style={styles.categoryLinkText}>
-                    VER {category.dishes.length} PRATOS
+                    VER {dishCount} PRATOS
                   </Text>
                   <ChevronRight size={13} color="#c12034" />
                 </View>
@@ -262,7 +276,7 @@ export default function HomeScreen() {
         {spotlightDeals.map((deal) => (
           <Pressable
             key={deal.title}
-            onPress={() => router.push(deal.href)}
+            onPress={() => router.push(hrefDaOferta(deal.categorySlug))}
             style={({ pressed }) => [styles.dealCard, pressed && styles.pressed]}
           >
             <Image source={{ uri: deal.image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -295,20 +309,8 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Pratos em destaque</Text>
 
         <View style={styles.productList}>
-          {menuProducts.map((product) => (
-            <ProductCard
-              key={product.slug}
-              product={{
-                slug: product.slug,
-                name: product.name,
-                description: product.shortDescription,
-                price: product.price,
-                prepTime: product.prepTime,
-                rating: product.rating,
-                tag: product.tag,
-                image: product.image,
-              }}
-            />
+          {featuredProducts.map((product) => (
+            <ProductCard key={product.id} product={toCardData(product)} />
           ))}
         </View>
 

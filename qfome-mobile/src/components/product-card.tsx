@@ -5,19 +5,31 @@ import { Clock3, Star } from "lucide-react-native";
 import { BrandText } from "@/components/brand-text";
 import { Tag } from "@/components/ui";
 import { colors, gradients } from "@/theme/colors";
+import type { ProdutoCatalogo } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import { fonts, radius, tracking } from "@/theme/typography";
 
 export type ProductCardData = {
-  slug: string;
+  id: number;
   name: string;
   description: string;
   price: number;
   prepTime: string;
-  rating: number;
+  rating: number | null;
   tag: string;
   image: string;
 };
+
+export const toCardData = (produto: ProdutoCatalogo): ProductCardData => ({
+  id: produto.id,
+  name: produto.nome,
+  description: produto.descricao,
+  price: produto.preco,
+  prepTime: produto.tempoPreparo,
+  rating: produto.rating,
+  tag: produto.tag,
+  image: produto.imagem,
+});
 
 /**
  * Card de prato do site (home, cardapio e categoria usam o mesmo desenho):
@@ -35,7 +47,7 @@ export function ProductCard({
 
   return (
     <Pressable
-      onPress={() => router.push(`/produto/${product.slug}`)}
+      onPress={() => router.push(`/produto/${product.id}`)}
       accessibilityRole="button"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -59,10 +71,12 @@ export function ProductCard({
             <Clock3 size={13} color="#71433a" />
             <Text style={styles.metaText}>{product.prepTime}</Text>
           </View>
-          <View style={styles.metaItem}>
-            <Star size={13} color={colors.star} fill={colors.star} />
-            <Text style={styles.metaText}>{product.rating.toFixed(1)}</Text>
-          </View>
+          {product.rating !== null ? (
+            <View style={styles.metaItem}>
+              <Star size={13} color={colors.star} fill={colors.star} />
+              <Text style={styles.metaText}>{product.rating.toFixed(1)}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.footer}>

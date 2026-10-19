@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: qfome-backend
+  datasource:
+    # SQLite em arquivo local (./data/qfome.db, relativo a pasta onde o backend roda).
+    # foreign_keys=on ativa as FKs e o ON DELETE CASCADE do schema (no SQLite vem desligado);
+    # date_class=TEXT grava datas legiveis, para abrir o arquivo no DB Browser for SQLite.
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:./data/qfome.db?foreign_keys=on&busy_timeout=5000&date_class=TEXT}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # O SQLite aceita um escritor por vez; uma conexao evita erros SQLITE_BUSY.
+      maximum-pool-size: 1
+  jpa:
+    database-platform: com.qfome.config.QfomeSQLiteDialect
+    hibernate:
+      # O schema vem de db/schema.sql (Anexo A); o Hibernate so mapeia as tabelas.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: ${SPRING_SQL_INIT_MODE:always}
+      encoding: UTF-8
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:8081}
+    allowed-headers: ${APP_CORS_ALLOWED_HEADERS:Authorization,Content-Type,Accept,Origin,X-Requested-With}
+    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:true}
+    max-age-seconds: ${APP_CORS_MAX_AGE_SECONDS:3600}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:never}

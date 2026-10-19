@@ -14,18 +14,15 @@ import {
   SummaryRow,
   SurfaceCard,
 } from "@/components/ui";
+import { realizarCheckout, type FormaPagamento } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
-import {
-  clearOrderItems,
-  readOrderItems,
-  readUser,
-  saveOrder,
-  saveUser,
-  type OrderItem,
-  type PaymentMethod,
-} from "@/lib/storage";
+import { calcularTaxaEntrega } from "@/lib/pedido";
+import { readSessao, type Sessao } from "@/lib/session";
+import { clearOrderItems, readOrderItems, type OrderItem } from "@/lib/storage";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
+
+type PaymentMethod = "pix" | "cartao" | "dinheiro";
 
 const paymentOptions: { id: PaymentMethod; label: string; Icon: typeof QrCode }[] = [
   { id: "pix", label: "Pix", Icon: QrCode },
@@ -44,28 +41,26 @@ const paymentCopy: Record<PaymentMethod, { title: string; description: string }>
   },
   dinheiro: {
     title: "Pagamento em dinheiro",
-    description: "Informe o valor do troco e pague na entrega com praticidade.",
+    description: "Pague na entrega com praticidade; o entregador leva troco.",
   },
 };
 
 const emptyForm = {
-  fullName: "",
-  email: "",
-  phone: "",
   cep: "",
   street: "",
   number: "",
   district: "",
-  complement: "",
-  changeFor: "",
+  city: "",
 };
 
 /** Finalizacao do pedido — equivale a `/checkout` do site, com busca de CEP. */
 export default function CheckoutScreen() {
   const router = useRouter();
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [sessao, setSessao] = useState<Sessao | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [feedback, setFeedback] = useState("");
+  const [sending, setSending] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const cepTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,19 +68,12 @@ export default function CheckoutScreen() {
     useCallback(() => {
       let active = true;
 
-      Promise.all([readOrderItems(), readUser()]).then(([savedItems, savedUser]) => {
+      Promise.all([readOrderItems(), readSessao()]).then(([savedItems, savedSessao]) => {
         if (!active) {
           return;
         }
         setItems(savedItems);
-        if (savedUser) {
-          setForm((current) => ({
-            ...current,
-            fullName: current.fullName || savedUser.name,
-            email: current.email || savedUser.email,
-            phone: current.phone || savedUser.phone || "",
-          }));
-        }
+        setSessao(savedSessao);
       });
 
       return () => {
@@ -116,6 +104,7 @@ export default function CheckoutScreen() {
           ...prev,
           street: data.logradouro ?? prev.street,
           district: data.bairro ?? prev.district,
+          city: data.localidade ?? prev.city,
         }));
       } catch {
         // CEP invalido ou sem conexao: o formulario continua editavel.
@@ -134,7 +123,7 @@ export default function CheckoutScreen() {
       items.reduce((sum, item) => sum + (item.totalPrice ?? item.unitPrice * item.quantity), 0),
     [items],
   );
-  const delivery = subtotal > 0 && subtotal < 45 ? 6.9 : 0;
+  const delivery = calcularTaxaEntrega(subtotal);
   const total = subtotal + delivery;
 
   const updateField = (key: keyof typeof form) => (value: string) => {
@@ -145,61 +134,56 @@ export default function CheckoutScreen() {
   };
 
   const finalizeOrder = async () => {
+    if (!sessao) {
+      router.push("/entrar");
+      return;
+    }
+
     if (items.length === 0) {
       setFeedback("Seu carrinho esta vazio. Adicione pratos antes de finalizar.");
       return;
     }
 
-    const required = [
-      form.fullName,
-      form.email,
-      form.phone,
-      form.cep,
-      form.street,
-      form.number,
-      form.district,
-    ];
-
+    const required = [form.cep, form.street, form.number, form.district, form.city];
     if (required.some((value) => !value.trim())) {
       setFeedback("Preencha os campos obrigatorios para concluir o pedido.");
       return;
     }
 
-    const orderCode = `QF-${Date.now().toString().slice(-6)}`;
-    const estimatedMinutes = Math.max(24, Math.min(48, 20 + items.length * 4));
+    if (form.cep.replace(/\D/g, "").length !== 8) {
+      setFeedback("Informe um CEP com 8 digitos.");
+      return;
+    }
 
-    await saveOrder({
-      code: orderCode,
-      createdAt: new Date().toISOString(),
-      paymentMethod,
-      total,
-      deliveryFee: delivery,
-      status: "recebido",
-      estimatedMinutes,
-      customer: {
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-      },
-      deliveryAddress: {
-        cep: form.cep.trim(),
-        street: form.street.trim(),
-        number: form.number.trim(),
-        district: form.district.trim(),
-        complement: form.complement.trim(),
-      },
-      items,
-    });
+    setSending(true);
+    try {
+      // Subtotal, entrega e total sao recalculados no servidor com os precos do banco.
+      const pedido = await realizarCheckout({
+        usuarioId: sessao.usuarioId,
+        formaPagamento: paymentMethod.toUpperCase() as FormaPagamento,
+        endereco: {
+          cep: form.cep.trim(),
+          logradouro: form.street.trim(),
+          numero: form.number.trim(),
+          bairro: form.district.trim(),
+          cidade: form.city.trim(),
+        },
+        itens: items.map((item) => ({
+          produtoId: item.productId,
+          quantidade: item.quantity,
+          observacao: item.note || undefined,
+          adicionais: item.extras.map((extra) => extra.id),
+        })),
+      });
 
-    await saveUser({
-      name: form.fullName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-    });
-    await clearOrderItems();
-
-    setItems([]);
-    router.push(`/checkout/sucesso?codigo=${orderCode}`);
+      await clearOrderItems();
+      setItems([]);
+      router.push(`/checkout/sucesso?codigo=${pedido.codigo}`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Nao foi possivel registrar o pedido.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const copy = paymentCopy[paymentMethod];
@@ -211,28 +195,13 @@ export default function CheckoutScreen() {
       <SurfaceCard>
         <Text style={styles.eyebrow}>CHECKOUT</Text>
         <Text style={styles.title}>Finalizar pedido</Text>
-        <Text style={styles.lead}>Preencha seus dados para concluir entrega e pagamento.</Text>
+        <Text style={styles.lead}>
+          {sessao
+            ? `Pedido em nome de ${sessao.nome} (${sessao.email}).`
+            : "Entre na sua conta para finalizar o pedido."}
+        </Text>
 
         <View style={styles.formBlock}>
-          <Field
-            label="Nome completo *"
-            value={form.fullName}
-            onChangeText={updateField("fullName")}
-            autoComplete="name"
-          />
-          <Field
-            label="E-mail *"
-            value={form.email}
-            onChangeText={updateField("email")}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <Field
-            label="Telefone *"
-            value={form.phone}
-            onChangeText={updateField("phone")}
-            keyboardType="phone-pad"
-          />
           <Field
             label="CEP *"
             value={form.cep}
@@ -251,11 +220,7 @@ export default function CheckoutScreen() {
             />
           </View>
           <Field label="Bairro *" value={form.district} onChangeText={updateField("district")} />
-          <Field
-            label="Complemento"
-            value={form.complement}
-            onChangeText={updateField("complement")}
-          />
+          <Field label="Cidade *" value={form.city} onChangeText={updateField("city")} />
         </View>
 
         <View style={styles.paymentCard}>
@@ -283,20 +248,13 @@ export default function CheckoutScreen() {
             <Text style={styles.paymentDescription}>{copy.description}</Text>
           </View>
 
-          {paymentMethod === "dinheiro" ? (
-            <Field
-              label="Troco para quanto?"
-              value={form.changeFor}
-              onChangeText={updateField("changeFor")}
-              keyboardType="numeric"
-            />
-          ) : null}
         </View>
 
         <Button
-          label="Confirmar pedido"
+          label={sessao ? (sending ? "Enviando pedido..." : "Confirmar pedido") : "Entrar para finalizar"}
           icon={<Truck size={16} color={colors.white} />}
           onPress={finalizeOrder}
+          disabled={sending}
           style={styles.submit}
         />
 
@@ -321,7 +279,7 @@ export default function CheckoutScreen() {
         ) : (
           <View style={styles.panelList}>
             {items.map((item, index) => (
-              <DarkCard key={`${item.slug}-${item.addedAt}-${index}`}>
+              <DarkCard key={`${item.productId}-${item.addedAt}-${index}`}>
                 <BrandText text={item.name} style={styles.panelStrong} />
                 <Text style={styles.panelText}>Quantidade: {item.quantity}</Text>
                 <Text style={styles.panelValue}>

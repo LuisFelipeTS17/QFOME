@@ -22,8 +22,10 @@ import {
   SurfaceCard,
   WhiteCard,
 } from "@/components/ui";
+import { getHistoricoPedidos, rastrearPedido, type Pedido } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
-import { readLastOrder, readOrderHistory, type OrderRecord } from "@/lib/storage";
+import { statusEtapas } from "@/lib/pedido";
+import { readSessao } from "@/lib/session";
 import { colors, gradients } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
 
@@ -34,12 +36,9 @@ const timeline = [
   { key: "entregue", label: "Entregue", Icon: CheckCircle2 },
 ] as const;
 
-const statusIndex: Record<OrderRecord["status"], number> = {
-  recebido: 0,
-  em_preparo: 1,
-  saiu_para_entrega: 2,
-  entregue: 3,
-};
+// Mesma estimativa que o checkout exibia: 20 min + 4 por item, entre 24 e 48.
+const previsaoMinutos = (pedido: Pedido) =>
+  Math.max(24, Math.min(48, 20 + pedido.itens.length * 4));
 
 const deliveryStatusText = [
   "Pedido confirmado e fila da cozinha iniciada.",
@@ -53,24 +52,41 @@ export default function AcompanharPedidoScreen() {
   const router = useRouter();
   const { codigo } = useLocalSearchParams<{ codigo?: string }>();
   const queryCode = typeof codigo === "string" ? codigo : "";
-  const [order, setOrder] = useState<OrderRecord | null>(null);
+  const [order, setOrder] = useState<Pedido | null>(null);
+  const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
 
-      Promise.all([readOrderHistory(), readLastOrder()]).then(([history, lastOrder]) => {
-        if (!active) {
-          return;
+      (async () => {
+        try {
+          let pedido: Pedido | null = null;
+          if (queryCode) {
+            pedido = await rastrearPedido(queryCode);
+          } else {
+            // Sem codigo na rota: mostra o pedido mais recente do usuario logado.
+            const sessao = await readSessao();
+            if (sessao) {
+              pedido = (await getHistoricoPedidos(sessao.usuarioId))[0] ?? null;
+            }
+          }
+          if (active) {
+            setOrder(pedido);
+            setError("");
+          }
+        } catch (err) {
+          if (active) {
+            setOrder(null);
+            setError(err instanceof Error ? err.message : "Nao foi possivel consultar o pedido.");
+          }
+        } finally {
+          if (active) {
+            setLoaded(true);
+          }
         }
-        const found =
-          (queryCode ? history.find((item) => item.code === queryCode) : null) ??
-          (queryCode && lastOrder?.code === queryCode ? lastOrder : null) ??
-          lastOrder;
-        setOrder(found ?? null);
-        setLoaded(true);
-      });
+      })();
 
       return () => {
         active = false;
@@ -78,10 +94,7 @@ export default function AcompanharPedidoScreen() {
     }, [queryCode]),
   );
 
-  const activeStepIndex = useMemo(
-    () => (order ? statusIndex[order.status] ?? 0 : -1),
-    [order],
-  );
+  const activeStepIndex = order ? statusEtapas.indexOf(order.status) : -1;
 
   const deliveryProgress = useMemo(() => {
     if (activeStepIndex < 0) {
@@ -103,7 +116,9 @@ export default function AcompanharPedidoScreen() {
       <Screen>
         <BackButton label="Voltar" />
         <SurfaceCard style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Nao encontramos um pedido para acompanhar.</Text>
+          <Text style={styles.emptyText}>
+            {error || "Nao encontramos um pedido para acompanhar."}
+          </Text>
           <Button label="Ir para area do cliente" onPress={() => router.push("/cliente")} />
         </SurfaceCard>
       </Screen>
@@ -116,12 +131,8 @@ export default function AcompanharPedidoScreen() {
 
       <SurfaceCard>
         <Text style={styles.eyebrow}>ACOMPANHAMENTO EM TEMPO REAL</Text>
-        <Text style={styles.title}>Pedido {order.code}</Text>
-        <Text style={styles.lead}>
-          {queryCode && queryCode !== order.code
-            ? `Exibindo pedido mais recente: ${order.code}`
-            : "Veja abaixo o status atualizado da entrega."}
-        </Text>
+        <Text style={styles.title}>Pedido {order.codigo}</Text>
+        <Text style={styles.lead}>Veja abaixo o status atualizado da entrega.</Text>
 
         {/* Trilha do entregador */}
         <WhiteCard style={styles.trackCard}>
@@ -178,10 +189,10 @@ export default function AcompanharPedidoScreen() {
         <WhiteCard style={styles.stepsCard}>
           <Text style={styles.blockLabel}>ITENS DO PEDIDO</Text>
           <View style={styles.itemsList}>
-            {order.items.map((item, index) => (
-              <View key={`${item.slug}-${item.addedAt}-${index}`} style={styles.itemRow}>
-                <BrandText text={item.name} style={styles.itemName} />
-                <Text style={styles.itemMeta}>Quantidade: {item.quantity}</Text>
+            {order.itens.map((item, index) => (
+              <View key={`${item.produtoId}-${index}`} style={styles.itemRow}>
+                <BrandText text={item.produtoNome} style={styles.itemName} />
+                <Text style={styles.itemMeta}>Quantidade: {item.quantidade}</Text>
               </View>
             ))}
           </View>
@@ -194,14 +205,14 @@ export default function AcompanharPedidoScreen() {
           <SummaryRow label="Total" value={formatPrice(order.total)} dark />
           <SummaryRow
             label="Entrega"
-            value={order.deliveryFee > 0 ? formatPrice(order.deliveryFee) : "Gratis"}
+            value={order.taxaEntrega > 0 ? formatPrice(order.taxaEntrega) : "Gratis"}
             dark
           />
           <View style={styles.etaRow}>
             <Text style={styles.etaLabel}>Previsao</Text>
             <View style={styles.etaValue}>
               <Clock3 size={14} color={colors.white} />
-              <Text style={styles.etaText}>{order.estimatedMinutes} min</Text>
+              <Text style={styles.etaText}>{previsaoMinutos(order)} min</Text>
             </View>
           </View>
         </DarkCard>
@@ -209,14 +220,12 @@ export default function AcompanharPedidoScreen() {
         <DarkCard style={styles.panelBlock}>
           <Text style={styles.panelLabel}>ENDERECO</Text>
           <Text style={styles.panelStrong}>
-            {order.deliveryAddress.street}, {order.deliveryAddress.number}
+            {order.endereco.logradouro}, {order.endereco.numero}
           </Text>
           <Text style={styles.panelText}>
-            {order.deliveryAddress.district} - CEP {order.deliveryAddress.cep}
+            {order.endereco.bairro} - {order.endereco.cidade}
           </Text>
-          {order.deliveryAddress.complement ? (
-            <Text style={styles.panelText}>Compl.: {order.deliveryAddress.complement}</Text>
-          ) : null}
+          <Text style={styles.panelText}>CEP {order.endereco.cep}</Text>
         </DarkCard>
 
         <Button

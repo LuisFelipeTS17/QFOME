@@ -6,6 +6,7 @@ import { Screen } from "@/components/screen";
 import { BrandText } from "@/components/brand-text";
 import { Button, EmptyState, SummaryRow, SurfaceCard, WhiteCard } from "@/components/ui";
 import { formatPrice } from "@/lib/format";
+import { calcularTaxaEntrega } from "@/lib/pedido";
 import { clearOrderItems, readOrderItems, saveOrderItems, type OrderItem } from "@/lib/storage";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
@@ -34,7 +35,7 @@ export default function PedidoScreen() {
       items.reduce((sum, item) => sum + (item.totalPrice ?? item.unitPrice * item.quantity), 0),
     [items],
   );
-  const delivery = items.length > 0 ? 6.9 : 0;
+  const delivery = calcularTaxaEntrega(subtotal);
   const total = subtotal + delivery;
 
   const removeItem = async (index: number) => {
@@ -86,7 +87,7 @@ export default function PedidoScreen() {
         ) : (
           <View style={styles.list}>
             {items.map((item, index) => (
-              <WhiteCard key={`${item.slug}-${item.addedAt}-${index}`} style={styles.itemCard}>
+              <WhiteCard key={`${item.productId}-${item.addedAt}-${index}`} style={styles.itemCard}>
                 <View style={styles.itemHeader}>
                   <View style={styles.itemHeaderText}>
                     <BrandText text={item.name} style={styles.itemName} />
@@ -104,7 +105,7 @@ export default function PedidoScreen() {
                 {item.extras?.length ? (
                   <View style={styles.extras}>
                     {item.extras.map((extra) => (
-                      <Text key={`${item.slug}-${extra.id}`} style={styles.extraText}>
+                      <Text key={`${item.productId}-${extra.id}`} style={styles.extraText}>
                         + {extra.name} ({formatPrice(extra.price)})
                       </Text>
                     ))}
@@ -121,7 +122,7 @@ export default function PedidoScreen() {
 
         <WhiteCard style={styles.summary}>
           <SummaryRow label="Subtotal" value={formatPrice(subtotal)} />
-          <SummaryRow label="Entrega" value={formatPrice(delivery)} />
+          <SummaryRow label="Entrega" value={delivery > 0 ? formatPrice(delivery) : "Gratis"} />
           <SummaryRow label="Total" value={formatPrice(total)} emphasis />
         </WhiteCard>
       </SurfaceCard>

@@ -9,11 +9,29 @@ App mobile do QFOME, com o mesmo design e a mesma paleta do frontend web.
 
 ## Como rodar
 
+O app busca os dados no backend (`qfome-backend/`), entao suba ele antes.
+
 ```bash
 cd qfome-mobile
 npm install
-npx expo start
 ```
+
+Crie um `.env` com o endereco do backend:
+
+```env
+# celular fisico (Expo Go): IP da maquina na mesma rede Wi-Fi
+EXPO_PUBLIC_API_URL=http://192.168.0.10:8080
+# emulador Android: 10.0.2.2 e o "localhost" do computador
+# EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
+# navegador (tecla w): pode omitir, o padrao e http://localhost:8080
+```
+
+```bash
+npx expo start -c   # -c limpa o cache; necessario depois de mudar o .env
+```
+
+Para descobrir o IP no Linux: `hostname -I`; no Windows: `ipconfig` (Endereco IPv4).
+Se o celular nao alcancar a API, libere a porta 8080 no firewall do computador.
 
 Depois disso:
 
@@ -61,8 +79,8 @@ Navegacao com **Expo Router**: 4 abas na base + stack para as telas internas.
 | `(tabs)/cardapio`        | `/cardapio`              | Cardapio completo com filtro por categoria   |
 | `(tabs)/pedido`          | `/pedido`                | Carrinho editavel com recalculo de totais    |
 | `(tabs)/cliente`         | `/cliente`               | Area do cliente e historico de pedidos       |
-| `categoria/[slug]`       | `/categoria/[slug]`      | Pratos da categoria, com hero da imagem      |
-| `produto/[slug]`         | `/produto/[slug]`        | Detalhe + montagem do pedido (qtd, adicionais, observacao) |
+| `categoria/[id]`         | `/categoria/[slug]`      | Pratos da categoria, com hero da imagem      |
+| `produto/[id]`           | `/produto/[slug]`        | Detalhe + montagem do pedido (qtd, adicionais, observacao) |
 | `checkout/index`         | `/checkout`              | Dados de entrega, pagamento e confirmacao    |
 | `checkout/sucesso`       | `/checkout/sucesso`      | Confirmacao com codigo do pedido             |
 | `acompanhar-pedido`      | `/acompanhar-pedido`     | Timeline da entrega com a trilha animada     |
@@ -79,30 +97,52 @@ qfome-mobile/
       _layout.tsx   # Stack raiz + carregamento das fontes + splash
       (tabs)/       # tab bar: Inicio, Cardapio, Pedido, Conta
     components/     # UI compartilhada (Screen, SurfaceCard, DarkPanel, ProductCard, Field...)
-    data/           # catalogo portado de `src/data/` do site
+    data/           # dados de vitrine do site (selo, nota, itens do prato, imagens das categorias)
     lib/
-      api.ts        # cliente HTTP espelhado do site, pronto para o backend
-      storage.ts    # AsyncStorage (mesmas chaves do localStorage do site)
+      api.ts        # cliente HTTP do backend (com timeout)
+      database.ts   # banco SQLite local (Anexo B)
+      session.ts    # usuario logado (tabela sessao)
+      catalog.ts    # cache do catalogo + sincronizacao com o backend (useCatalogo)
+      vitrine.ts    # liga os dados de vitrine aos produtos do backend pelo nome
+      storage.ts    # carrinho em montagem (AsyncStorage)
+      pedido.ts     # taxa de entrega e rotulos de status
       format.ts     # formatacao de moeda e data pt-BR
     theme/          # paleta, fontes, raios e espacamentos
+  metro.config.js   # habilita o .wasm do SQLite no navegador
 ```
 
 ## Dados
 
-O catalogo (6 categorias, 25 pratos) vem de `src/data/`, copiado do site — o app abre
-sem depender do backend. Carrinho, sessao e historico ficam em `AsyncStorage`, usando as
-mesmas chaves do `localStorage` da web (`qfome-order-items`, `qfome-user`,
-`qfome-last-order`, `qfome-order-history`).
+### Banco local (SQLite)
 
-O checkout consulta o **ViaCEP** para preencher rua e bairro, igual ao site.
+O app usa `expo-sqlite` (ja incluso no Expo Go) com o banco `qfome.db` no aparelho.
+O schema e o **Anexo B** e e criado em `src/lib/database.ts` na primeira abertura:
 
-### Ligar no backend Spring Boot
+| Tabela            | Conteudo                                                        |
+|-------------------|-----------------------------------------------------------------|
+| `sessao`          | Usuario logado (uma linha, `id = 1`), gravado no login/cadastro |
+| `categoria_cache` | Copia das categorias de `GET /categorias`                       |
+| `produto_cache`   | Copia dos produtos de `GET /produtos`                           |
 
-`src/lib/api.ts` ja tem todos os endpoints. Para ativar, crie um `.env`:
+As telas leem o catalogo do SQLite (abre na hora e funciona sem internet) e em seguida
+sincronizam com o backend, no maximo uma vez por minuto. Sem conexao, aparece o aviso
+"Mostrando o cardapio salvo no aparelho". Os adicionais de cada prato nao ficam no cache
+(o Anexo B nao tem essa tabela) e sao buscados ao abrir o produto.
 
-```env
-EXPO_PUBLIC_API_URL=http://192.168.0.10:8080
-```
+### O que vem do backend
 
-Use o IP da maquina na rede local — `localhost` nao funciona a partir de um celular fisico.
-Lembre de incluir esse IP em `APP_CORS_ALLOWED_ORIGINS` no backend.
+| Funcionalidade        | Origem                                            |
+|-----------------------|---------------------------------------------------|
+| Login / cadastro      | `POST /auth/login`, `POST /auth/register` -> `sessao` |
+| Categorias e pratos   | `GET /categorias`, `GET /produtos` -> cache SQLite |
+| Adicionais do prato   | `GET /produtos/{id}`                              |
+| Checkout              | `POST /checkout` (exige login; totais calculados no servidor) |
+| Historico             | `GET /pedidos/cliente/{usuarioId}`                |
+| Acompanhar pedido     | `GET /pedidos/acompanhar/{codigo}`                |
+| Carrinho em montagem  | Local (`AsyncStorage`, chave `qfome-order-items`) |
+
+Precos, descricoes e tempo de preparo vem sempre do banco. Selo ("Mais pedido"), nota,
+"o que vem no prato" e as imagens/descricoes das categorias nao existem no Anexo A e
+continuam em `src/data/`, ligados aos produtos do backend pelo nome.
+
+O checkout consulta o **ViaCEP** para preencher rua, bairro e cidade, igual ao site.
