@@ -102,19 +102,30 @@ type ButtonProps = {
   icon?: ReactNode;
   variant?: "brand" | "outline" | "gold" | "ghostDark";
   style?: StyleProp<ViewStyle>;
+  disabled?: boolean;
 };
 
-export function Button({ label, onPress, icon, variant = "brand", style }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  icon,
+  variant = "brand",
+  style,
+  disabled = false,
+}: ButtonProps) {
   const variantStyle = buttonVariants[variant];
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.buttonBase,
         variantStyle.container,
         pressed && styles.pressed,
+        disabled && styles.disabled,
         style,
       ]}
     >
@@ -352,6 +363,9 @@ export const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.82,
+  },
+  disabled: {
+    opacity: 0.55,
   },
   backButton: {
     alignSelf: "flex-start",

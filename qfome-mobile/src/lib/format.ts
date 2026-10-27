@@ -1,4 +1,3 @@
-/** Mesma formatacao de moeda usada em todas as telas do site. */
 export const formatPrice = (value: number) =>
   value.toLocaleString("pt-BR", {
     style: "currency",
@@ -6,7 +5,7 @@ export const formatPrice = (value: number) =>
   });
 
 export const formatDateTime = (isoDate: string) => {
-  const parsed = new Date(isoDate);
+  const parsed = new Date(isoDate.replace(/(\.\d{3})\d+/, "$1"));
   if (Number.isNaN(parsed.getTime())) {
     return isoDate;
   }

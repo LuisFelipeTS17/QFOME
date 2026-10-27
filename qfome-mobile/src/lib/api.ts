@@ -1,43 +1,73 @@
 /**
- * Cliente HTTP espelhado de `src/lib/api.ts` do site, pronto para plugar no
- * backend Spring Boot. Hoje nenhuma tela depende dele: o catalogo vem de
- * `src/data/` e o pedido e gravado em AsyncStorage, entao o app inicia sem o
- * backend rodando.
+ * Cliente HTTP do backend Spring Boot.
  *
- * Para ativar a integracao, defina EXPO_PUBLIC_API_URL no `.env`. Em celular
- * fisico use o IP da maquina na rede local, nao `localhost`:
+ * Defina EXPO_PUBLIC_API_URL no `.env`. Em celular fisico use o IP da maquina
+ * na rede local, nao `localhost`:
  *   EXPO_PUBLIC_API_URL=http://192.168.0.10:8080
+ * No emulador Android, `localhost` e o proprio emulador: use http://10.0.2.2:8080.
  */
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
+const TIMEOUT_MS = 8000;
+
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  // Sem timeout, um IP errado deixa a requisicao pendurada por minutos.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Erro ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+      signal: controller.signal,
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      `Sem conexao com o servidor (${BASE_URL}). Confira se o backend esta rodando e o EXPO_PUBLIC_API_URL.`,
+    );
+  } finally {
+    clearTimeout(timeout);
   }
 
   const text = await res.text();
+  if (!res.ok) {
+    throw new ApiError(res.status, extrairMensagem(text) || `Erro ${res.status}`);
+  }
   return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
-// --- Categorias ---
+// O backend responde erros como texto puro ou como JSON { erro: "..." }.
+function extrairMensagem(text: string) {
+  try {
+    const body = JSON.parse(text) as { erro?: string };
+    return body.erro ?? text;
+  } catch {
+    return text;
+  }
+}
+
+// --- Catalogo ---
 export function getCategorias() {
-  return request<{ id: number; nome: string }[]>("/categorias");
+  return request<Categoria[]>("/categorias");
 }
 
-// --- Produtos ---
-export function getProdutos(categoria?: string) {
-  const query = categoria ? `?categoria=${encodeURIComponent(categoria)}` : "";
-  return request<ProdutoResumo[]>(`/produtos${query}`);
+export function getProdutos(categoriaId?: number) {
+  const query = categoriaId ? `?categoria=${categoriaId}` : "";
+  return request<Produto[]>(`/produtos${query}`);
 }
 
-export function getProdutoPorSlug(slug: string) {
-  return request<Produto>(`/produtos/${slug}`);
+export function getProduto(id: number) {
+  return request<Produto>(`/produtos/${id}`);
 }
 
 // --- Auth ---
@@ -48,115 +78,105 @@ export function login(email: string, password: string) {
   });
 }
 
-export function register(name: string, email: string, password: string, phone?: string) {
+export function register(name: string, email: string, password: string) {
   return request<UsuarioLogado>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ name, email, password, phone }),
-  });
-}
-
-// --- Carrinho ---
-export function getCarrinho(clienteId: number) {
-  return request<Carrinho>(`/carrinho/${clienteId}`);
-}
-
-export function adicionarAoCarrinho(
-  clienteId: number,
-  produtoId: number,
-  quantidade: number,
-  observacao?: string,
-) {
-  return request<Carrinho>(`/carrinho/${clienteId}/itens`, {
-    method: "POST",
-    body: JSON.stringify({ produtoId, quantidade, observacao }),
-  });
-}
-
-export function atualizarItemCarrinho(clienteId: number, itemId: number, quantidade: number) {
-  return request<Carrinho>(`/carrinho/${clienteId}/itens/${itemId}?quantidade=${quantidade}`, {
-    method: "PATCH",
-  });
-}
-
-export function removerItemCarrinho(clienteId: number, itemId: number) {
-  return request<Carrinho>(`/carrinho/${clienteId}/itens/${itemId}`, {
-    method: "DELETE",
-  });
-}
-
-// --- Checkout ---
-export function realizarCheckout(clienteId: number, formaPagamento: string, total: number) {
-  return request<PedidoResponse>("/checkout", {
-    method: "POST",
-    body: JSON.stringify({ clienteId, formaPagamento, total }),
+    body: JSON.stringify({ name, email, password }),
   });
 }
 
 // --- Pedidos ---
+export function realizarCheckout(payload: CheckoutPayload) {
+  return request<Pedido>("/checkout", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function rastrearPedido(codigo: string) {
-  return request<PedidoStatus>(`/pedidos/acompanhar/${codigo}`);
+  return request<Pedido>(`/pedidos/acompanhar/${encodeURIComponent(codigo)}`);
 }
 
-export function getHistoricoPedidos(clienteId: number) {
-  return request<PedidoStatus[]>(`/pedidos/cliente/${clienteId}`);
+export function getHistoricoPedidos(usuarioId: number) {
+  return request<Pedido[]>(`/pedidos/cliente/${usuarioId}`);
 }
 
-// --- Tipos ---
-export type ProdutoResumo = {
+// --- Tipos (espelham os DTOs do backend) ---
+export type Categoria = {
+  id: number;
+  nome: string;
+};
+
+export type Adicional = {
   id: number;
   nome: string;
   preco: number;
-  slug: string;
-  categoriaNome: string;
 };
 
 export type Produto = {
   id: number;
+  categoriaId: number;
+  categoriaNome: string;
   nome: string;
+  descricao: string | null;
   preco: number;
-  slug: string;
-  categoria: { id: number; nome: string };
+  imagemUrl: string | null;
+  tempoPreparoMin: number | null;
+  adicionais: Adicional[];
 };
 
 export type UsuarioLogado = {
   id: number;
   name: string;
   email: string;
+  perfil: string;
   message: string;
 };
 
-export type Carrinho = {
-  id: number;
-  clienteId: number;
-  status: string;
-  total: number;
-  itens: ItemCarrinho[];
+export type FormaPagamento = "PIX" | "CARTAO" | "DINHEIRO";
+
+export type StatusPedido = "RECEBIDO" | "EM_PREPARO" | "SAIU_PARA_ENTREGA" | "ENTREGUE";
+
+export type Endereco = {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
 };
 
-export type ItemCarrinho = {
-  id: number;
+export type CheckoutPayload = {
+  usuarioId: number;
+  formaPagamento: FormaPagamento;
+  endereco: Endereco;
+  itens: {
+    produtoId: number;
+    quantidade: number;
+    observacao?: string;
+    adicionais: number[];
+  }[];
+};
+
+export type ItemPedido = {
   produtoId: number;
   produtoNome: string;
   quantidade: number;
   precoUnitario: number;
+  observacao: string | null;
+  adicionais: Adicional[];
   subtotal: number;
-  observacao?: string;
 };
 
-export type PedidoResponse = {
+export type Pedido = {
   id: number;
   codigo: string;
-  status: string;
-  formaPagamento: string;
-  dataCriacao: string;
+  usuarioId: number;
+  status: StatusPedido;
+  formaPagamento: FormaPagamento;
+  endereco: Endereco;
+  subtotal: number;
+  taxaEntrega: number;
   total: number;
-  clienteId: number;
-};
-
-export type PedidoStatus = {
-  id: number;
-  codigo: string;
-  status: string;
-  total: number;
-  dataCriacao: string;
+  criadoEm: string;
+  itens: ItemPedido[];
 };

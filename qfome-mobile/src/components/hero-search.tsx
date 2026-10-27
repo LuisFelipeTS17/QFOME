@@ -3,8 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { useRouter, type Href } from "expo-router";
 import { ChevronRight, Search } from "lucide-react-native";
 import { BrandText } from "@/components/brand-text";
-import { menuCategories } from "@/data/menu-categories";
-import { allMenuProducts } from "@/data/menu-products";
+import type { CategoriaCatalogo, ProdutoCatalogo } from "@/lib/catalog";
+import { normalizar } from "@/lib/vitrine";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
 
@@ -16,50 +16,54 @@ type SearchItem = {
   kind: "prato" | "categoria";
 };
 
-const normalizeText = (value: string) =>
-  value
-    .toLocaleLowerCase("pt-BR")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-
-function createSearchItems(): SearchItem[] {
-  const items: SearchItem[] = [
-    ...allMenuProducts.map((product) => ({
-      id: `product-${product.slug}`,
-      title: product.name,
-      subtitle: product.shortDescription,
-      href: { pathname: "/produto/[slug]", params: { slug: product.slug } } as const,
+function createSearchItems(
+  categorias: CategoriaCatalogo[],
+  produtos: ProdutoCatalogo[],
+): SearchItem[] {
+  return [
+    ...produtos.map((product) => ({
+      id: `product-${product.id}`,
+      title: product.nome,
+      subtitle: product.descricao,
+      href: `/produto/${product.id}` as const,
       kind: "prato" as const,
     })),
-    ...menuCategories.map((category) => ({
-      id: `category-${category.slug}`,
-      title: category.name,
-      subtitle: `Categoria: ${category.description}`,
-      href: { pathname: "/categoria/[slug]", params: { slug: category.slug } } as const,
+    ...categorias.map((category) => ({
+      id: `category-${category.id}`,
+      title: category.nome,
+      subtitle: `Categoria: ${category.descricao}`,
+      href: `/categoria/${category.id}` as const,
       kind: "categoria" as const,
     })),
   ];
-
-  return items;
 }
 
-const searchItems = createSearchItems();
-
 /** Busca da home, com a lista de sugestoes logo abaixo do campo. */
-export function HeroSearch() {
+export function HeroSearch({
+  categorias,
+  produtos,
+}: {
+  categorias: CategoriaCatalogo[];
+  produtos: ProdutoCatalogo[];
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
 
+  const searchItems = useMemo(
+    () => createSearchItems(categorias, produtos),
+    [categorias, produtos],
+  );
+
   const results = useMemo(() => {
-    const term = normalizeText(query.trim());
+    const term = normalizar(query);
     if (!term) {
       return [];
     }
 
     return searchItems
-      .filter((item) => normalizeText(`${item.title} ${item.subtitle}`).includes(term))
+      .filter((item) => normalizar(`${item.title} ${item.subtitle}`).includes(term))
       .slice(0, 6);
-  }, [query]);
+  }, [query, searchItems]);
 
   const goTo = (href: Href) => {
     setQuery("");

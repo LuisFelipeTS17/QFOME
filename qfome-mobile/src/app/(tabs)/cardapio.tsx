@@ -1,36 +1,29 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/screen";
-import { ProductCard } from "@/components/product-card";
+import { CatalogStatus } from "@/components/catalog-status";
+import { ProductCard, toCardData } from "@/components/product-card";
 import { SurfaceCard } from "@/components/ui";
-import { menuCategories } from "@/data/menu-categories";
-import { allMenuProducts } from "@/data/menu-products";
+import { useCatalogo } from "@/lib/catalog";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
 
-const ALL = "todos";
+const ALL = 0;
 
 /** Cardapio completo. O filtro por categoria e a versao mobile do menu lateral. */
 export default function CardapioScreen() {
-  const [activeCategory, setActiveCategory] = useState<string>(ALL);
+  const catalogo = useCatalogo();
+  const [activeCategory, setActiveCategory] = useState<number>(ALL);
 
-  const slugsByCategory = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    menuCategories.forEach((category) => {
-      map[category.slug] = new Set(category.dishes.map((dish) => dish.slug));
-    });
-    return map;
-  }, []);
+  const products = useMemo(
+    () =>
+      activeCategory === ALL
+        ? catalogo.produtos
+        : catalogo.produtos.filter((product) => product.categoriaId === activeCategory),
+    [activeCategory, catalogo.produtos],
+  );
 
-  const products = useMemo(() => {
-    if (activeCategory === ALL) {
-      return allMenuProducts;
-    }
-    const allowed = slugsByCategory[activeCategory];
-    return allMenuProducts.filter((product) => allowed?.has(product.slug));
-  }, [activeCategory, slugsByCategory]);
-
-  const filters = [{ slug: ALL, name: "Todos" }, ...menuCategories];
+  const filters = [{ id: ALL, nome: "Todos" }, ...catalogo.categorias];
 
   return (
     <Screen bottomInset={24}>
@@ -47,20 +40,22 @@ export default function CardapioScreen() {
           contentContainerStyle={styles.filterRow}
         >
           {filters.map((filter) => {
-            const isActive = filter.slug === activeCategory;
+            const isActive = filter.id === activeCategory;
             return (
               <Pressable
-                key={filter.slug}
-                onPress={() => setActiveCategory(filter.slug)}
+                key={filter.id}
+                onPress={() => setActiveCategory(filter.id)}
                 style={[styles.filterChip, isActive && styles.filterChipActive]}
               >
                 <Text style={[styles.filterLabel, isActive && styles.filterLabelActive]}>
-                  {filter.name.toUpperCase()}
+                  {filter.nome.toUpperCase()}
                 </Text>
               </Pressable>
             );
           })}
         </ScrollView>
+
+        <CatalogStatus estado={catalogo} />
 
         <Text style={styles.count}>
           {products.length} {products.length === 1 ? "prato" : "pratos"}
@@ -68,19 +63,7 @@ export default function CardapioScreen() {
 
         <View style={styles.list}>
           {products.map((product) => (
-            <ProductCard
-              key={product.slug}
-              product={{
-                slug: product.slug,
-                name: product.name,
-                description: product.shortDescription,
-                price: product.price,
-                prepTime: product.prepTime,
-                rating: product.rating,
-                tag: product.tag,
-                image: product.image,
-              }}
-            />
+            <ProductCard key={product.id} product={toCardData(product)} />
           ))}
         </View>
       </SurfaceCard>
