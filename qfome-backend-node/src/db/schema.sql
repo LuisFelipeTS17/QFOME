@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS pedido (
   status VARCHAR(20) NOT NULL DEFAULT 'RECEBIDO'
     CHECK (status IN ('RECEBIDO', 'EM_PREPARO',
                       'SAIU_PARA_ENTREGA', 'ENTREGUE')),
-  forma_pagamento VARCHAR(10) NOT NULL
-    CHECK (forma_pagamento IN ('PIX', 'CARTAO', 'DINHEIRO')),
+  forma_pagamento VARCHAR(15) NOT NULL
+    CHECK (forma_pagamento IN ('PIX', 'CARTAO', 'DINHEIRO', 'MERCADO_PAGO')),
   cep CHAR(8) NOT NULL,
   logradouro VARCHAR(150) NOT NULL,
   numero VARCHAR(10) NOT NULL,

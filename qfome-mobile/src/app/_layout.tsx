@@ -60,6 +60,7 @@ export default function RootLayout() {
         <Stack.Screen name="checkout/index" />
         <Stack.Screen name="checkout/sucesso" />
         <Stack.Screen name="acompanhar-pedido" />
+        <Stack.Screen name="exportar-dados" />
         <Stack.Screen name="entrar" />
         <Stack.Screen name="contato" />
         <Stack.Screen name="recuperar-acesso" />

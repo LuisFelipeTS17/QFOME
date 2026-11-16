@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Clock3, MapPin, ShoppingBag, UserRound } from "lucide-react-native";
+import { Clock3, Download, MapPin, ShoppingBag, UserRound } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Button, DarkCard, DarkPanel, SurfaceCard, WhiteCard } from "@/components/ui";
 import { getHistoricoPedidos, type Pedido } from "@/lib/api";
@@ -141,6 +141,13 @@ export default function ClienteScreen() {
           />
         </View>
         <Button label="Ir para checkout" onPress={() => router.push("/checkout")} />
+        <Button
+          label="Exportar dados (JSON)"
+          variant="outline"
+          icon={<Download size={15} color="#7a3f33" />}
+          onPress={() => router.push("/exportar-dados")}
+          style={styles.exportButton}
+        />
 
         <WhiteCard style={styles.historyCard}>
           <Text style={styles.fieldLabel}>HISTORICO DE PEDIDOS</Text>
@@ -297,6 +304,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 16,
     marginBottom: 8,
+  },
+  exportButton: {
+    marginTop: 8,
   },
   historyCard: {
     marginTop: 18,

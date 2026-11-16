@@ -1,4 +1,5 @@
 import { Adicional } from '../model/Adicional.js';
+import { Categoria } from '../model/Categoria.js';
 import { ItemPedido } from '../model/ItemPedido.js';
 import { ItemPedidoAdicional } from '../model/ItemPedidoAdicional.js';
 import { Pedido } from '../model/Pedido.js';
@@ -13,6 +14,13 @@ export class PedidoRepository {
     return this.db
       .prepare('SELECT * FROM pedido WHERE usuario_id = ? ORDER BY criado_em DESC')
       .all(usuarioId)
+      .map((linha) => this.montar(linha));
+  }
+
+  findAllOrderByCriadoEmDesc() {
+    return this.db
+      .prepare('SELECT * FROM pedido ORDER BY criado_em DESC, id DESC')
+      .all()
       .map((linha) => this.montar(linha));
   }
 
@@ -55,9 +63,11 @@ export class PedidoRepository {
 
   montar(linha) {
     const itens = this.db.prepare(`
-      SELECT ip.*, p.nome AS produto_nome, p.preco AS produto_preco
+      SELECT ip.*, p.nome AS produto_nome, p.preco AS produto_preco,
+             c.id AS categoria_id, c.nome AS categoria_nome
       FROM item_pedido ip
       JOIN produto p ON p.id = ip.produto_id
+      JOIN categoria c ON c.id = p.categoria_id
       WHERE ip.pedido_id = ?
       ORDER BY ip.id`).all(linha.id);
     const adicionais = this.db.prepare(`
@@ -86,7 +96,12 @@ export class PedidoRepository {
       criadoEm: linha.criado_em,
       itens: itens.map((item) => new ItemPedido({
         id: item.id,
-        produto: new Produto({ id: item.produto_id, nome: item.produto_nome, preco: item.produto_preco }),
+        produto: new Produto({
+          id: item.produto_id,
+          nome: item.produto_nome,
+          preco: item.produto_preco,
+          categoria: new Categoria({ id: item.categoria_id, nome: item.categoria_nome }),
+        }),
         quantidade: item.quantidade,
         precoUnitario: item.preco_unitario,
         observacao: item.observacao,

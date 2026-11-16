@@ -101,6 +101,26 @@ export function getHistoricoPedidos(usuarioId: number) {
   return request<Pedido[]>(`/pedidos/cliente/${usuarioId}`);
 }
 
+// --- Pagamento (Mercado Pago) ---
+export function pagarComMercadoPago(codigo: string) {
+  return request<PagamentoMercadoPago>("/pagamentos/mercadopago", {
+    method: "POST",
+    body: JSON.stringify({ codigo }),
+  });
+}
+
+// --- Relatorios (exportacao JSON para o dashboard em Python) ---
+export function getRelatorioPedidos() {
+  return request<RelatorioPedidos>("/relatorios/pedidos");
+}
+
+export function exportarRelatorioPedidos() {
+  return request<RelatorioExportado>("/relatorios/pedidos/exportar", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 // --- Tipos (espelham os DTOs do backend) ---
 export type Categoria = {
   id: number;
@@ -133,7 +153,7 @@ export type UsuarioLogado = {
   message: string;
 };
 
-export type FormaPagamento = "PIX" | "CARTAO" | "DINHEIRO";
+export type FormaPagamento = "PIX" | "CARTAO" | "DINHEIRO" | "MERCADO_PAGO";
 
 export type StatusPedido = "RECEBIDO" | "EM_PREPARO" | "SAIU_PARA_ENTREGA" | "ENTREGUE";
 
@@ -179,4 +199,50 @@ export type Pedido = {
   total: number;
   criadoEm: string;
   itens: ItemPedido[];
+};
+
+export type PagamentoMercadoPago = {
+  codigo: string;
+  // "mercadopago": preferencia criada de verdade na API; "simulado": sem token no backend.
+  modo: "mercadopago" | "simulado";
+  preferenceId: string | null;
+  initPoint: string;
+  total: number;
+};
+
+export type RelatorioItemPedido = {
+  produtoId: number;
+  produtoNome: string;
+  categoriaNome: string | null;
+  quantidade: number;
+  precoUnitario: number;
+  adicionais: { nome: string; preco: number }[];
+  subtotal: number;
+};
+
+export type RelatorioPedido = {
+  id: number;
+  codigo: string;
+  status: StatusPedido;
+  formaPagamento: FormaPagamento;
+  criadoEm: string;
+  cidade: string;
+  bairro: string;
+  usuario: { id: number; nome: string; email: string } | null;
+  subtotal: number;
+  taxaEntrega: number;
+  total: number;
+  itens: RelatorioItemPedido[];
+};
+
+export type RelatorioPedidos = {
+  geradoEm: string;
+  totalPedidos: number;
+  faturamentoTotal: number;
+  pedidos: RelatorioPedido[];
+};
+
+export type RelatorioExportado = RelatorioPedidos & {
+  // Caminho do data/exports/pedidos.json gravado no servidor, lido pelo dashboard.
+  arquivo: string;
 };

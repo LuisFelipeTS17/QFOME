@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Banknote, CreditCard, QrCode, ShoppingBag, Truck } from "lucide-react-native";
+import { Banknote, CreditCard, QrCode, ShoppingBag, Truck, Wallet } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { BrandText } from "@/components/brand-text";
 import { Field } from "@/components/field";
@@ -14,7 +14,7 @@ import {
   SummaryRow,
   SurfaceCard,
 } from "@/components/ui";
-import { realizarCheckout, type FormaPagamento } from "@/lib/api";
+import { pagarComMercadoPago, realizarCheckout, type FormaPagamento } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { calcularTaxaEntrega } from "@/lib/pedido";
 import { readSessao, type Sessao } from "@/lib/session";
@@ -22,12 +22,20 @@ import { clearOrderItems, readOrderItems, type OrderItem } from "@/lib/storage";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
 
-type PaymentMethod = "pix" | "cartao" | "dinheiro";
+type PaymentMethod = "pix" | "cartao" | "dinheiro" | "mercadopago";
+
+const formaPagamentoDoMetodo: Record<PaymentMethod, FormaPagamento> = {
+  pix: "PIX",
+  cartao: "CARTAO",
+  dinheiro: "DINHEIRO",
+  mercadopago: "MERCADO_PAGO",
+};
 
 const paymentOptions: { id: PaymentMethod; label: string; Icon: typeof QrCode }[] = [
   { id: "pix", label: "Pix", Icon: QrCode },
   { id: "cartao", label: "Cartao", Icon: CreditCard },
   { id: "dinheiro", label: "Dinheiro", Icon: Banknote },
+  { id: "mercadopago", label: "Mercado Pago", Icon: Wallet },
 ];
 
 const paymentCopy: Record<PaymentMethod, { title: string; description: string }> = {
@@ -42,6 +50,11 @@ const paymentCopy: Record<PaymentMethod, { title: string; description: string }>
   dinheiro: {
     title: "Pagamento em dinheiro",
     description: "Pague na entrega com praticidade; o entregador leva troco.",
+  },
+  mercadopago: {
+    title: "Pagamento online com Mercado Pago",
+    description:
+      "Ao confirmar, abrimos o checkout seguro do Mercado Pago para voce pagar com cartao, Pix ou saldo.",
   },
 };
 
@@ -160,7 +173,7 @@ export default function CheckoutScreen() {
       // Subtotal, entrega e total sao recalculados no servidor com os precos do banco.
       const pedido = await realizarCheckout({
         usuarioId: sessao.usuarioId,
-        formaPagamento: paymentMethod.toUpperCase() as FormaPagamento,
+        formaPagamento: formaPagamentoDoMetodo[paymentMethod],
         endereco: {
           cep: form.cep.trim(),
           logradouro: form.street.trim(),
@@ -178,6 +191,22 @@ export default function CheckoutScreen() {
 
       await clearOrderItems();
       setItems([]);
+
+      if (paymentMethod === "mercadopago") {
+        // O backend cria a preferencia na API do Mercado Pago e devolve o link
+        // (init_point); o pagamento e concluido no checkout do proprio Mercado Pago.
+        let mp = "erro";
+        try {
+          const pagamento = await pagarComMercadoPago(pedido.codigo);
+          await Linking.openURL(pagamento.initPoint);
+          mp = "ok";
+        } catch {
+          // O pedido ja foi registrado: a tela de sucesso avisa que o link falhou.
+        }
+        router.push(`/checkout/sucesso?codigo=${pedido.codigo}&mp=${mp}`);
+        return;
+      }
+
       router.push(`/checkout/sucesso?codigo=${pedido.codigo}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Nao foi possivel registrar o pedido.");
@@ -361,10 +390,12 @@ const styles = StyleSheet.create({
   },
   paymentRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   paymentOption: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "45%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

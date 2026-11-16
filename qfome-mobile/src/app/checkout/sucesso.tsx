@@ -9,8 +9,16 @@ import { fonts, radius, tracking } from "@/theme/typography";
 /** Confirmacao do pedido — equivale a `/checkout/sucesso`. */
 export default function CheckoutSucessoScreen() {
   const router = useRouter();
-  const { codigo } = useLocalSearchParams<{ codigo?: string }>();
+  const { codigo, mp } = useLocalSearchParams<{ codigo?: string; mp?: string }>();
   const orderCode = typeof codigo === "string" && codigo ? codigo : "QF-SEM-CODIGO";
+
+  // mp=ok: o checkout do Mercado Pago foi aberto; mp=erro: o link nao pode ser criado.
+  const mercadoPagoNote =
+    mp === "ok"
+      ? "Abrimos o checkout do Mercado Pago para voce concluir o pagamento. Se a aba nao apareceu, confira o navegador."
+      : mp === "erro"
+        ? "Seu pedido foi registrado, mas nao conseguimos abrir o pagamento do Mercado Pago. Tente novamente mais tarde."
+        : null;
 
   return (
     <Screen>
@@ -30,6 +38,13 @@ export default function CheckoutSucessoScreen() {
           <Text style={styles.codeLabel}>CODIGO DO PEDIDO</Text>
           <Text style={styles.codeValue}>{orderCode}</Text>
         </WhiteCard>
+
+        {mercadoPagoNote ? (
+          <WhiteCard style={styles.mpCard}>
+            <Text style={styles.codeLabel}>PAGAMENTO MERCADO PAGO</Text>
+            <Text style={styles.mpNote}>{mercadoPagoNote}</Text>
+          </WhiteCard>
+        ) : null}
 
         <View style={styles.actions}>
           <Button
@@ -108,6 +123,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.extrabold,
     fontSize: 24,
     color: colors.price,
+  },
+  mpCard: {
+    alignSelf: "stretch",
+    marginTop: 10,
+    gap: 4,
+  },
+  mpNote: {
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.body,
   },
   actions: {
     alignSelf: "stretch",

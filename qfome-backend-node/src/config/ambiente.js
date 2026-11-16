@@ -20,6 +20,17 @@ export function lerConfiguracao(env = process.env) {
       mostrarDetalhes: opcao(env.MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS ?? 'never',
         ['never', 'when-authorized', 'always'], 'MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS') === 'always',
     },
+    dados: {
+      // Pasta onde o backend grava arquivos gerados: registros de compra do
+      // Mercado Pago (purchases/) e a exportacao JSON para o dashboard (exports/).
+      pasta: env.DATA_DIR ?? './data',
+    },
+    mercadoPago: {
+      // Access Token do Mercado Pago (TEST-... para sandbox). Sem token, o
+      // pagamento roda em modo simulado: a API responde um link de demonstracao.
+      accessToken: (env.MERCADOPAGO_ACCESS_TOKEN ?? '').trim() || null,
+      urlApi: env.MERCADOPAGO_API_URL ?? 'https://api.mercadopago.com',
+    },
   };
 }
 

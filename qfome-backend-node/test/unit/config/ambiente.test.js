@@ -15,6 +15,8 @@ describe('lerConfiguracao', () => {
         maxAgeSeconds: 3600,
       },
       health: { mostrarDetalhes: false },
+      dados: { pasta: './data' },
+      mercadoPago: { accessToken: null, urlApi: 'https://api.mercadopago.com' },
     });
   });
 
@@ -28,6 +30,9 @@ describe('lerConfiguracao', () => {
       APP_CORS_ALLOW_CREDENTIALS: 'false',
       APP_CORS_MAX_AGE_SECONDS: '60',
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: 'always',
+      DATA_DIR: '/tmp/dados',
+      MERCADOPAGO_ACCESS_TOKEN: ' TEST-abc ',
+      MERCADOPAGO_API_URL: 'https://mp.local',
     });
 
     assert.equal(config.porta, 9090);
@@ -39,6 +44,10 @@ describe('lerConfiguracao', () => {
       maxAgeSeconds: 60,
     });
     assert.equal(config.health.mostrarDetalhes, true);
+    assert.deepEqual(config.dados, { pasta: '/tmp/dados' });
+    // O token sai sem espacos nas pontas; vazio ou em branco vira null (modo simulado).
+    assert.deepEqual(config.mercadoPago, { accessToken: 'TEST-abc', urlApi: 'https://mp.local' });
+    assert.equal(lerConfiguracao({ MERCADOPAGO_ACCESS_TOKEN: '   ' }).mercadoPago.accessToken, null);
   });
 
   it('separa listas por virgula, ignorando espacos e itens vazios', () => {

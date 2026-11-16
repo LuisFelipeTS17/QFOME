@@ -9,8 +9,10 @@ import { criarCarrinhoController } from './controller/CarrinhoController.js';
 import { criarCategoriaController } from './controller/CategoriaController.js';
 import { criarCheckoutController } from './controller/CheckoutController.js';
 import { criarClienteController } from './controller/ClienteController.js';
+import { criarPagamentoController } from './controller/pedido/PagamentoController.js';
 import { criarPedidoAcompanhamentoController } from './controller/pedido/PedidoAcompanhamentoController.js';
 import { criarProdutoController } from './controller/ProdutoController.js';
+import { criarRelatorioController } from './controller/RelatorioController.js';
 import { CarrinhoRepository } from './repository/CarrinhoRepository.js';
 import { CategoriaRepository } from './repository/CategoriaRepository.js';
 import { PedidoRepository } from './repository/PedidoRepository.js';
@@ -19,8 +21,10 @@ import { UsuarioRepository } from './repository/UsuarioRepository.js';
 import { CarrinhoService } from './service/CarrinhoService.js';
 import { CategoriaService } from './service/CategoriaService.js';
 import { CheckoutService } from './service/pedido/CheckoutService.js';
+import { PagamentoService } from './service/pedido/PagamentoService.js';
 import { PedidoAcompanhamentoService } from './service/pedido/PedidoAcompanhamentoService.js';
 import { ProdutoService } from './service/ProdutoService.js';
+import { RelatorioService } from './service/RelatorioService.js';
 import { rotaNaoEncontrada } from './web/rotas.js';
 
 /** Monta a aplicacao (o que o Spring faz por injecao de dependencia) sobre um banco ja aberto. */
@@ -38,6 +42,8 @@ export function criarApp({ db, config }) {
   const carrinhoService = new CarrinhoService(carrinhoRepository, usuarioRepository, produtoService, transacao);
   const checkoutService = new CheckoutService(pedidoRepository, usuarioRepository, produtoService, transacao);
   const pedidoAcompanhamentoService = new PedidoAcompanhamentoService(pedidoRepository);
+  const pagamentoService = new PagamentoService(pedidoRepository, usuarioRepository, config);
+  const relatorioService = new RelatorioService(pedidoRepository, usuarioRepository, config);
 
   const app = express();
   app.disable('x-powered-by');
@@ -60,6 +66,8 @@ export function criarApp({ db, config }) {
   app.use(criarCarrinhoController(carrinhoService));
   app.use(criarCheckoutController(checkoutService));
   app.use(criarPedidoAcompanhamentoController(pedidoAcompanhamentoService));
+  app.use(criarPagamentoController(pagamentoService));
+  app.use(criarRelatorioController(relatorioService));
 
   app.use(rotaNaoEncontrada);
   app.use(tratadorDeErros);
