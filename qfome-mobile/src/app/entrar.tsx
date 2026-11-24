@@ -6,6 +6,7 @@ import { Screen } from "@/components/screen";
 import { Field } from "@/components/field";
 import { BackButton, Button, FeedbackBox, SurfaceCard } from "@/components/ui";
 import { login, register, type UsuarioLogado } from "@/lib/api";
+import { abrirSessaoAdmin } from "@/lib/admin-session";
 import { saveSessao } from "@/lib/session";
 import { colors } from "@/theme/colors";
 import { fonts, radius, tracking } from "@/theme/typography";
@@ -35,10 +36,15 @@ export default function EntrarScreen() {
       return;
     }
 
-    await autenticar(
-      () => login(loginEmail.trim().toLowerCase(), loginPassword),
-      "Login realizado. Redirecionando para sua area de cliente...",
-    );
+    await autenticar(async () => {
+      const email = loginEmail.trim().toLowerCase();
+      const usuario = await login(email, loginPassword);
+      if (usuario.perfil === "ADMIN") {
+        // Abre tambem a sessao administrativa, para o painel nao pedir a senha de novo.
+        await abrirSessaoAdmin(email, loginPassword);
+      }
+      return usuario;
+    }, "Login realizado. Redirecionando para sua area de cliente...");
   };
 
   const handleSignup = async () => {
@@ -63,6 +69,11 @@ export default function EntrarScreen() {
         email: usuario.email,
         perfil: usuario.perfil,
       });
+      if (usuario.perfil === "ADMIN") {
+        setFeedback("Login realizado. Abrindo o painel administrativo...");
+        router.push("/admin");
+        return;
+      }
       setFeedback(sucesso);
       router.push("/cliente");
     } catch (error) {

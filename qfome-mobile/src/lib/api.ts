@@ -18,7 +18,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit, token?: string): Promise<T> {
   // Sem timeout, um IP errado deixa a requisicao pendurada por minutos.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -26,7 +26,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : null),
+      },
       ...options,
       signal: controller.signal,
     });
@@ -68,6 +71,46 @@ export function getProdutos(categoriaId?: number) {
 
 export function getProduto(id: number) {
   return request<Produto>(`/produtos/${id}`);
+}
+
+// --- Area administrativa (o token vem do login administrativo) ---
+export function entrarComoAdmin(email: string, password: string) {
+  return request<LoginAdmin>("/admin/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function getSessaoAdmin(token: string) {
+  return request<Omit<LoginAdmin, "token">>("/admin/sessao", undefined, token);
+}
+
+export function sairDoAdmin(token: string) {
+  return request<void>("/admin/logout", { method: "POST" }, token);
+}
+
+export function criarProduto(payload: ProdutoPayload, token: string) {
+  return request<Produto>("/produtos", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export function atualizarProduto(id: number, payload: ProdutoPayload, token: string) {
+  return request<Produto>(`/produtos/${id}`, { method: "PUT", body: JSON.stringify(payload) }, token);
+}
+
+export function excluirProduto(id: number, token: string) {
+  return request<void>(`/produtos/${id}`, { method: "DELETE" }, token);
+}
+
+export function exportarRelatorioComoAdmin(token: string) {
+  return request<RelatorioExportado>(
+    "/admin/relatorios/pedidos/exportar",
+    { method: "POST", body: JSON.stringify({}) },
+    token,
+  );
+}
+
+export function getExportacoes(token: string) {
+  return request<Exportacao[]>("/admin/exportacoes", undefined, token);
 }
 
 // --- Auth ---
@@ -143,6 +186,21 @@ export type Produto = {
   imagemUrl: string | null;
   tempoPreparoMin: number | null;
   adicionais: Adicional[];
+};
+
+export type LoginAdmin = {
+  token: string;
+  expiraEm: string;
+  usuario: { id: number; nome: string; email: string; perfil: string };
+};
+
+export type ProdutoPayload = {
+  categoriaId: number;
+  nome: string;
+  descricao: string | null;
+  preco: number;
+  imagemUrl: string | null;
+  tempoPreparoMin: number | null;
 };
 
 export type UsuarioLogado = {
@@ -243,6 +301,19 @@ export type RelatorioPedidos = {
 };
 
 export type RelatorioExportado = RelatorioPedidos & {
+  // Registro da exportacao no banco do servidor (tabela exportacao).
+  exportacaoId: number;
   // Caminho do data/exports/pedidos.json gravado no servidor, lido pelo dashboard.
   arquivo: string;
+};
+
+export type Exportacao = {
+  id: number;
+  usuarioId: number | null;
+  usuarioNome: string | null;
+  origem: "ADMIN" | "CLIENTE";
+  totalPedidos: number;
+  faturamentoTotal: number;
+  arquivo: string;
+  criadoEm: string;
 };

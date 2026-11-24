@@ -3,7 +3,8 @@ import { parametroLong, primeiroValor } from '../web/conversao.js';
 import { corpoValidado } from '../web/requisicao.js';
 import { criarRouter, metodoNaoSuportado } from '../web/rotas.js';
 
-export function criarProdutoController(produtoService) {
+/** Consultas sao publicas; criar, alterar e excluir exigem o login administrativo. */
+export function criarProdutoController(produtoService, exigirAdmin) {
   const router = criarRouter();
 
   router.route('/produtos')
@@ -12,7 +13,7 @@ export function criarProdutoController(produtoService) {
       const categoria = parametroLong(primeiroValor(req.query.categoria));
       res.json(produtoService.listar(categoria));
     })
-    .post((req, res) => {
+    .post(exigirAdmin, (req, res) => {
       const dto = corpoValidado(req, ProdutoRequestDTO);
       res.status(201).json(produtoService.criar(dto));
     })
@@ -22,12 +23,12 @@ export function criarProdutoController(produtoService) {
     .get((req, res) => {
       res.json(produtoService.buscarPorId(parametroLong(req.params.id)));
     })
-    .put((req, res) => {
+    .put(exigirAdmin, (req, res) => {
       const id = parametroLong(req.params.id);
       const dto = corpoValidado(req, ProdutoRequestDTO);
       res.json(produtoService.atualizar(id, dto));
     })
-    .delete((req, res) => {
+    .delete(exigirAdmin, (req, res) => {
       produtoService.deletar(parametroLong(req.params.id));
       res.status(204).end();
     })

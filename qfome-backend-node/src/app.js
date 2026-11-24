@@ -4,6 +4,7 @@ import { criarTransacao } from './config/banco.js';
 import { criarCors } from './config/cors.js';
 import { tratadorDeErros } from './config/tratadorDeErros.js';
 import { criarActuatorController, ehEndpointDoActuator } from './controller/ActuatorController.js';
+import { criarAdminController } from './controller/AdminController.js';
 import { criarAuthController } from './controller/AuthController.js';
 import { criarCarrinhoController } from './controller/CarrinhoController.js';
 import { criarCategoriaController } from './controller/CategoriaController.js';
@@ -15,9 +16,12 @@ import { criarProdutoController } from './controller/ProdutoController.js';
 import { criarRelatorioController } from './controller/RelatorioController.js';
 import { CarrinhoRepository } from './repository/CarrinhoRepository.js';
 import { CategoriaRepository } from './repository/CategoriaRepository.js';
+import { ExportacaoRepository } from './repository/ExportacaoRepository.js';
 import { PedidoRepository } from './repository/PedidoRepository.js';
 import { ProdutoRepository } from './repository/ProdutoRepository.js';
+import { SessaoAdminRepository } from './repository/SessaoAdminRepository.js';
 import { UsuarioRepository } from './repository/UsuarioRepository.js';
+import { AdminService } from './service/AdminService.js';
 import { CarrinhoService } from './service/CarrinhoService.js';
 import { CategoriaService } from './service/CategoriaService.js';
 import { CheckoutService } from './service/pedido/CheckoutService.js';
@@ -25,6 +29,7 @@ import { PagamentoService } from './service/pedido/PagamentoService.js';
 import { PedidoAcompanhamentoService } from './service/pedido/PedidoAcompanhamentoService.js';
 import { ProdutoService } from './service/ProdutoService.js';
 import { RelatorioService } from './service/RelatorioService.js';
+import { criarExigirAdmin } from './web/autenticacao.js';
 import { rotaNaoEncontrada } from './web/rotas.js';
 
 /** Monta a aplicacao (o que o Spring faz por injecao de dependencia) sobre um banco ja aberto. */
@@ -36,6 +41,8 @@ export function criarApp({ db, config }) {
   const produtoRepository = new ProdutoRepository(db);
   const carrinhoRepository = new CarrinhoRepository(db);
   const pedidoRepository = new PedidoRepository(db);
+  const sessaoAdminRepository = new SessaoAdminRepository(db);
+  const exportacaoRepository = new ExportacaoRepository(db);
 
   const categoriaService = new CategoriaService(categoriaRepository, transacao);
   const produtoService = new ProdutoService(produtoRepository, categoriaService, transacao);
@@ -43,7 +50,9 @@ export function criarApp({ db, config }) {
   const checkoutService = new CheckoutService(pedidoRepository, usuarioRepository, produtoService, transacao);
   const pedidoAcompanhamentoService = new PedidoAcompanhamentoService(pedidoRepository);
   const pagamentoService = new PagamentoService(pedidoRepository, usuarioRepository, config);
-  const relatorioService = new RelatorioService(pedidoRepository, usuarioRepository, config);
+  const relatorioService = new RelatorioService(pedidoRepository, usuarioRepository, exportacaoRepository, config);
+  const adminService = new AdminService(usuarioRepository, sessaoAdminRepository, config.admin);
+  const exigirAdmin = criarExigirAdmin(adminService);
 
   const app = express();
   app.disable('x-powered-by');
@@ -60,8 +69,9 @@ export function criarApp({ db, config }) {
 
   app.use(criarActuatorController(db, config.health));
   app.use(criarAuthController(usuarioRepository));
-  app.use(criarCategoriaController(categoriaService));
-  app.use(criarProdutoController(produtoService));
+  app.use(criarAdminController(adminService, relatorioService, exigirAdmin));
+  app.use(criarCategoriaController(categoriaService, exigirAdmin));
+  app.use(criarProdutoController(produtoService, exigirAdmin));
   app.use(criarClienteController(usuarioRepository));
   app.use(criarCarrinhoController(carrinhoService));
   app.use(criarCheckoutController(checkoutService));

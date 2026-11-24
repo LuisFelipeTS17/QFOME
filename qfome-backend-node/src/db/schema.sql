@@ -95,3 +95,24 @@ CREATE TABLE IF NOT EXISTS item_pedido_adicional (
   preco NUMERIC(10,2) NOT NULL DEFAULT 0,
   PRIMARY KEY (item_pedido_id, adicional_id)
 );
+
+-- Sessoes do login administrativo. O token nao e gravado, so o hash (SHA-256) dele.
+CREATE TABLE IF NOT EXISTS sessao_admin (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario_id BIGINT NOT NULL REFERENCES usuario (id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expira_em TIMESTAMP NOT NULL
+);
+
+-- Historico das exportacoes de pedidos em JSON.
+-- usuario_id fica nulo na exportacao feita pela area do cliente.
+CREATE TABLE IF NOT EXISTS exportacao (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario_id BIGINT REFERENCES usuario (id) ON DELETE SET NULL,
+  origem VARCHAR(10) NOT NULL CHECK (origem IN ('ADMIN', 'CLIENTE')),
+  total_pedidos INTEGER NOT NULL,
+  faturamento_total NUMERIC(10,2) NOT NULL,
+  arquivo VARCHAR(255) NOT NULL,
+  criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

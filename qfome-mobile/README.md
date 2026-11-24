@@ -87,6 +87,23 @@ Navegacao com **Expo Router**: 4 abas na base + stack para as telas internas.
 | `entrar`                 | `/entrar`                | Login e cadastro                             |
 | `contato`                | `/contato`               | Canais de atendimento                        |
 | `recuperar-acesso`       | `/recuperar-acesso`      | Recuperacao de acesso por e-mail             |
+| `exportar-dados`         | -                        | Exportacao dos pedidos em JSON               |
+| `admin/entrar`           | -                        | Login administrativo                         |
+| `admin/index`            | -                        | Painel administrativo, com as opcoes da area |
+| `admin/pratos`           | -                        | Lista, busca, edicao e exclusao de pratos    |
+| `admin/prato/[id]`       | -                        | Cadastro (`novo`) e alteracao de prato       |
+| `admin/exportar`         | -                        | Exportacao em JSON e historico               |
+
+### Area administrativa
+
+Pede o login de um usuario `ADMIN` (padrao do backend: `admin@qfome.com`, senha `Qfome@2026`).
+Ha dois caminhos: pelo login comum do app, que leva a conta de administrador direto para o painel,
+ou pelo endereco. As demais contas nao veem nenhum atalho. O backend confere o token em cada
+operacao; a sessao fica na tabela `sessao_admin` do SQLite do aparelho.
+
+- **Navegador**: `http://localhost:8081/admin`
+- **Expo Go**: `exp://<IP da maquina>:8081/--/admin`
+- **Build propria**: `qfome://admin`
 
 ## Estrutura
 
@@ -102,6 +119,7 @@ qfome-mobile/
       api.ts        # cliente HTTP do backend (com timeout)
       database.ts   # banco SQLite local (Anexo B)
       session.ts    # usuario logado (tabela sessao)
+      admin-session.ts # login administrativo (tabela sessao_admin)
       catalog.ts    # cache do catalogo + sincronizacao com o backend (useCatalogo)
       vitrine.ts    # liga os dados de vitrine aos produtos do backend pelo nome
       storage.ts    # carrinho em montagem (AsyncStorage)
@@ -121,6 +139,7 @@ O schema e o **Anexo B** e e criado em `src/lib/database.ts` na primeira abertur
 | Tabela            | Conteudo                                                        |
 |-------------------|-----------------------------------------------------------------|
 | `sessao`          | Usuario logado (uma linha, `id = 1`), gravado no login/cadastro |
+| `sessao_admin`    | Sessao do login administrativo (uma linha, `id = 1`)            |
 | `categoria_cache` | Copia das categorias de `GET /categorias`                       |
 | `produto_cache`   | Copia dos produtos de `GET /produtos`                           |
 
@@ -136,6 +155,9 @@ sincronizam com o backend, no maximo uma vez por minuto. Sem conexao, aparece o 
 | Login / cadastro      | `POST /auth/login`, `POST /auth/register` -> `sessao` |
 | Categorias e pratos   | `GET /categorias`, `GET /produtos` -> cache SQLite |
 | Adicionais do prato   | `GET /produtos/{id}`                              |
+| Login administrativo  | `POST /admin/login`, `GET /admin/sessao`, `POST /admin/logout` -> `sessao_admin` |
+| Gestao de pratos      | `POST /produtos`, `PUT` e `DELETE /produtos/{id}` (com token) |
+| Exportacao do admin   | `POST /admin/relatorios/pedidos/exportar`, `GET /admin/exportacoes` |
 | Checkout              | `POST /checkout` (exige login; totais calculados no servidor) |
 | Historico             | `GET /pedidos/cliente/{usuarioId}`                |
 | Acompanhar pedido     | `GET /pedidos/acompanhar/{codigo}`                |

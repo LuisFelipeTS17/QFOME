@@ -989,10 +989,12 @@ def aplicar_estilo(fig: go.Figure, *, horizontal: bool = False, altura: int = 34
         gridcolor=COR_GRADE,
         zerolinecolor=COR_GRADE,
         tickfont=dict(color=COR_ROTULO, size=11),
+        automargin=True,
     )
     eixo_rotulo = dict(
         showgrid=False,
         tickfont=dict(color=COR_TINTA, size=12),
+        automargin=True,
     )
     if horizontal:
         fig.update_xaxes(**eixo_valor)

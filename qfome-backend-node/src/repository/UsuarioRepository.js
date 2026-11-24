@@ -21,6 +21,10 @@ export class UsuarioRepository {
     return this.db.prepare('SELECT 1 FROM usuario WHERE email = ?').get(email) !== undefined;
   }
 
+  existsByPerfil(perfil) {
+    return this.db.prepare('SELECT 1 FROM usuario WHERE perfil = ?').get(perfil) !== undefined;
+  }
+
   save(usuario) {
     if (usuario.id == null) {
       usuario.prePersist();

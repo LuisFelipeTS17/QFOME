@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
+import { entrarComoAdmin } from '../../apoio/admin.js';
 import { subirAplicacao } from '../../apoio/api.js';
 
 // Comportamento HTTP comum a todas as rotas: formato do erro, rotas, metodos, corpo e idioma.
 
 describe('API: respostas de erro', () => {
   let api;
+  let admin;
 
   before(async () => {
     api = await subirAplicacao();
+    admin = await entrarComoAdmin(api);
   });
 
   after(() => api.encerrar());
@@ -66,7 +69,7 @@ describe('API: respostas de erro', () => {
 
   describe('corpo da requisicao', () => {
     it('exige Content-Type JSON (415)', async () => {
-      const { status, corpo } = await api.post('/categorias', 'nome=Massas', {
+      const { status, corpo } = await admin.post('/categorias', 'nome=Massas', {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
@@ -75,18 +78,18 @@ describe('API: respostas de erro', () => {
     });
 
     it('recusa JSON malformado (400)', async () => {
-      const { status, corpo } = await api.post('/categorias', '{"nome": ');
+      const { status, corpo } = await admin.post('/categorias', '{"nome": ');
 
       assert.equal(status, 400);
       assert.equal(corpo.erro, 'Requisicao invalida');
     });
 
     it('recusa corpo vazio (400)', async () => {
-      assert.equal((await api.post('/categorias', '')).status, 400);
+      assert.equal((await admin.post('/categorias', '')).status, 400);
     });
 
     it('recusa campo com tipo errado (400)', async () => {
-      const { status, corpo } = await api.post('/categorias', { nome: { texto: 'Massas' } });
+      const { status, corpo } = await admin.post('/categorias', { nome: { texto: 'Massas' } });
 
       assert.equal(status, 400);
       assert.equal(corpo.erro, 'Requisicao invalida');
@@ -94,7 +97,7 @@ describe('API: respostas de erro', () => {
   });
 
   describe('idioma das mensagens de validacao', () => {
-    const validar = (acceptLanguage) => api.post('/categorias', { nome: '' }, {
+    const validar = (acceptLanguage) => admin.post('/categorias', { nome: '' }, {
       headers: acceptLanguage ? { 'Accept-Language': acceptLanguage } : {},
     });
 

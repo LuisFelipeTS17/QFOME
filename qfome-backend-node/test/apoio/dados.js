@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
+import { entrarComoAdmin } from './admin.js';
+
 /** Itens do catalogo inicial (src/db/data.sql) usados nos testes de integracao. */
 export const CATALOGO = Object.freeze({
   totalCategorias: 6,
@@ -47,7 +49,8 @@ export async function cadastrarCliente(api, { nome = 'Cliente Teste', email = em
 }
 
 export async function criarCategoria(api, nome = unico('Categoria')) {
-  const { status, corpo } = await api.post('/categorias', { nome });
+  const admin = await entrarComoAdmin(api);
+  const { status, corpo } = await admin.post('/categorias', { nome });
   assert.equal(status, 201, `criacao da categoria falhou: ${JSON.stringify(corpo)}`);
   return corpo;
 }
@@ -55,7 +58,8 @@ export async function criarCategoria(api, nome = unico('Categoria')) {
 /** Cria um produto (numa categoria nova, se categoriaId nao vier). */
 export async function criarProduto(api, dados = {}) {
   const categoriaId = dados.categoriaId ?? (await criarCategoria(api)).id;
-  const { status, corpo } = await api.post('/produtos', {
+  const admin = await entrarComoAdmin(api);
+  const { status, corpo } = await admin.post('/produtos', {
     nome: unico('Produto'),
     descricao: 'Produto criado pelo teste',
     preco: 20.00,

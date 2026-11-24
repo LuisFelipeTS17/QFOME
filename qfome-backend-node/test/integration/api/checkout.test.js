@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 
+import { entrarComoAdmin } from '../../apoio/admin.js';
 import { subirAplicacao } from '../../apoio/api.js';
 import {
   cadastrarCliente,
@@ -140,7 +141,8 @@ describe('API POST /checkout', () => {
       const adicionalId = Number(lastInsertRowid);
       const pedido = await fecharPedido(api, clienteId, [{ produtoId: produto.id, quantidade: 1, adicionais: [adicionalId] }]);
 
-      await api.put(`/produtos/${produto.id}`, { ...produto, preco: 99 });
+      const admin = await entrarComoAdmin(api);
+      await admin.put(`/produtos/${produto.id}`, { ...produto, preco: 99 });
       api.db.prepare('UPDATE adicional SET preco = 9.99 WHERE id = ?').run(adicionalId);
 
       const { corpo } = await api.get(`/pedidos/acompanhar/${pedido.codigo}`);

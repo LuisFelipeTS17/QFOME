@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Clock3, Download, MapPin, ShoppingBag, UserRound } from "lucide-react-native";
+import { Clock3, Download, LayoutDashboard, MapPin, ShoppingBag, UserRound } from "lucide-react-native";
 import { Screen } from "@/components/screen";
 import { Button, DarkCard, DarkPanel, SurfaceCard, WhiteCard } from "@/components/ui";
 import { getHistoricoPedidos, type Pedido } from "@/lib/api";
+import { encerrarSessaoAdmin, readSessaoAdmin } from "@/lib/admin-session";
 import { formatDateTime, formatPrice } from "@/lib/format";
 import { statusLabel } from "@/lib/pedido";
 import { clearSessao, readSessao, type Sessao } from "@/lib/session";
@@ -20,18 +21,24 @@ export default function ClienteScreen() {
   const [historyError, setHistoryError] = useState("");
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [adminLogado, setAdminLogado] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
 
       (async () => {
-        const [sessao, savedCart] = await Promise.all([readSessao(), readOrderItems()]);
+        const [sessao, savedCart, sessaoAdmin] = await Promise.all([
+          readSessao(),
+          readOrderItems(),
+          readSessaoAdmin(),
+        ]);
         if (!active) {
           return;
         }
         setUser(sessao);
         setCartItems(savedCart);
+        setAdminLogado(sessaoAdmin !== null);
         setLoaded(true);
 
         if (!sessao) {
@@ -66,6 +73,11 @@ export default function ClienteScreen() {
   const latestOrder = recentOrders[0];
 
   const handleLogout = async () => {
+    // A conta de administrador tem duas sessoes: sai das duas.
+    if (user?.perfil === "ADMIN") {
+      await encerrarSessaoAdmin().catch(() => {});
+      setAdminLogado(false);
+    }
     await clearSessao();
     setUser(null);
     setHistory([]);
@@ -76,9 +88,27 @@ export default function ClienteScreen() {
     return <Screen bottomInset={24}>{null}</Screen>;
   }
 
+  // So aparece para administradores; as demais contas nao veem o atalho.
+  const atalhoAdmin =
+    adminLogado || user?.perfil === "ADMIN" ? (
+      <DarkPanel eyebrow="Administrador" title="PAINEL ADMINISTRATIVO">
+        <Text style={styles.adminText}>
+          Cadastre, edite e exclua pratos do cardapio e exporte os pedidos.
+        </Text>
+        <Button
+          label="Abrir painel administrativo"
+          variant="gold"
+          icon={<LayoutDashboard size={15} color={colors.panelActionInk} />}
+          onPress={() => router.push("/admin")}
+          style={styles.panelButton}
+        />
+      </DarkPanel>
+    ) : null;
+
   if (!user) {
     return (
       <Screen bottomInset={24}>
+        {atalhoAdmin}
         <SurfaceCard style={styles.loggedOut}>
           <Text style={styles.loggedOutText}>Voce ainda nao tem uma conta ativa.</Text>
           <Button
@@ -93,6 +123,8 @@ export default function ClienteScreen() {
 
   return (
     <Screen bottomInset={24}>
+      {atalhoAdmin}
+
       <SurfaceCard>
         <View style={styles.headerRow}>
           <View style={styles.flex}>
@@ -227,6 +259,13 @@ export default function ClienteScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  adminText: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.panelInkSoft,
+    marginTop: 8,
   },
   loggedOut: {
     alignItems: "center",

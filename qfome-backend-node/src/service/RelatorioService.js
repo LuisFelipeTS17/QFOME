@@ -5,18 +5,22 @@ import Big from 'big.js';
 
 import { paraJson } from '../util/datas.js';
 
+const MAXIMO_NO_HISTORICO = 20;
+
 /**
  * Exportacao dos pedidos em JSON para o dashboard em Python (Analise de Dados
  * e Estatistica). O app chama POST /relatorios/pedidos/exportar pelo botao
  * "Exportar dados": o backend grava data/exports/pedidos.json e devolve o mesmo
- * conteudo na resposta, para o app tambem poder compartilhar o arquivo.
+ * conteudo na resposta, para o app tambem poder compartilhar o arquivo. Cada exportacao
+ * fica registrada no banco (tabela exportacao).
  *
  * Valores saem como numeros (nao strings formatadas), prontos para o pandas.
  */
 export class RelatorioService {
-  constructor(pedidoRepository, usuarioRepository, config) {
+  constructor(pedidoRepository, usuarioRepository, exportacaoRepository, config) {
     this.pedidoRepository = pedidoRepository;
     this.usuarioRepository = usuarioRepository;
+    this.exportacaoRepository = exportacaoRepository;
     this.pastaExportacoes = path.join(config.dados.pasta, 'exports');
   }
 
@@ -62,12 +66,26 @@ export class RelatorioService {
     };
   }
 
-  /** Grava data/exports/pedidos.json (sobrescrevendo a exportacao anterior) e devolve o conteudo. */
-  exportar() {
+  /** Grava data/exports/pedidos.json (sobrescrevendo a exportacao anterior), registra e devolve o conteudo. */
+  exportar({ usuarioId = null, origem = 'CLIENTE' } = {}) {
     const relatorio = this.montarRelatorio();
     fs.mkdirSync(this.pastaExportacoes, { recursive: true });
     const arquivo = path.join(this.pastaExportacoes, 'pedidos.json');
     fs.writeFileSync(arquivo, `${JSON.stringify(relatorio, null, 2)}\n`, 'utf8');
-    return { arquivo: path.resolve(arquivo), ...relatorio };
+
+    const exportacao = this.exportacaoRepository.save({
+      usuarioId,
+      origem,
+      totalPedidos: relatorio.totalPedidos,
+      faturamentoTotal: relatorio.faturamentoTotal,
+      arquivo: path.resolve(arquivo),
+    });
+    return { exportacaoId: exportacao.id, arquivo: exportacao.arquivo, ...relatorio };
+  }
+
+  /** Ultimas exportacoes, da mais recente para a mais antiga. */
+  listarExportacoes() {
+    return this.exportacaoRepository.findRecentes(MAXIMO_NO_HISTORICO)
+      .map((exportacao) => ({ ...exportacao, criadoEm: paraJson(exportacao.criadoEm) }));
   }
 }

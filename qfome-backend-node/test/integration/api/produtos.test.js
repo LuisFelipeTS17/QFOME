@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
+import { entrarComoAdmin } from '../../apoio/admin.js';
 import { subirAplicacao } from '../../apoio/api.js';
 import { cadastrarCliente, CATALOGO, criarCategoria, criarProduto, fecharPedido, unico } from '../../apoio/dados.js';
 
 describe('API /produtos', () => {
   let api;
+  let admin;
 
   before(async () => {
     api = await subirAplicacao();
+    admin = await entrarComoAdmin(api);
   });
 
   after(() => api.encerrar());
@@ -86,7 +89,7 @@ describe('API /produtos', () => {
       const categoria = await criarCategoria(api);
       const nome = unico('Pudim');
 
-      const { status, corpo } = await api.post('/produtos', {
+      const { status, corpo } = await admin.post('/produtos', {
         categoriaId: categoria.id,
         nome: `  ${nome} `,
         descricao: 'Pudim de leite',
@@ -113,7 +116,7 @@ describe('API /produtos', () => {
     it('aceita produto so com os campos obrigatorios', async () => {
       const categoria = await criarCategoria(api);
 
-      const { status, corpo } = await api.post('/produtos', { categoriaId: categoria.id, nome: unico('Simples'), preco: 9.9 });
+      const { status, corpo } = await admin.post('/produtos', { categoriaId: categoria.id, nome: unico('Simples'), preco: 9.9 });
 
       assert.equal(status, 201);
       assert.equal(corpo.descricao, null);
@@ -133,7 +136,7 @@ describe('API /produtos', () => {
     ];
     for (const [caso, campos, erro] of invalidos) {
       it(`recusa produto ${caso} (400)`, async () => {
-        const resposta = await api.post('/produtos', { categoriaId: 1, nome: 'Produto', preco: 10, ...campos });
+        const resposta = await admin.post('/produtos', { categoriaId: 1, nome: 'Produto', preco: 10, ...campos });
 
         assert.equal(resposta.status, 400);
         assert.equal(resposta.corpo.erro, erro);
@@ -141,7 +144,7 @@ describe('API /produtos', () => {
     }
 
     it('responde 404 quando a categoria nao existe', async () => {
-      const { status, corpo } = await api.post('/produtos', { categoriaId: 999999, nome: 'Produto', preco: 10 });
+      const { status, corpo } = await admin.post('/produtos', { categoriaId: 999999, nome: 'Produto', preco: 10 });
 
       assert.equal(status, 404);
       assert.equal(corpo.erro, 'Categoria nao encontrada');
@@ -153,7 +156,7 @@ describe('API /produtos', () => {
       const produto = await criarProduto(api);
       const outraCategoria = await criarCategoria(api);
 
-      const { status, corpo } = await api.put(`/produtos/${produto.id}`, {
+      const { status, corpo } = await admin.put(`/produtos/${produto.id}`, {
         categoriaId: outraCategoria.id,
         nome: 'Nome novo',
         descricao: null,
@@ -173,12 +176,12 @@ describe('API /produtos', () => {
 
     it('valida os dados (400)', async () => {
       const produto = await criarProduto(api);
-      const { status } = await api.put(`/produtos/${produto.id}`, { categoriaId: 1, nome: 'X', preco: 0 });
+      const { status } = await admin.put(`/produtos/${produto.id}`, { categoriaId: 1, nome: 'X', preco: 0 });
       assert.equal(status, 400);
     });
 
     it('responde 404 quando o produto nao existe', async () => {
-      const { status } = await api.put('/produtos/999999', { categoriaId: 1, nome: 'X', preco: 10 });
+      const { status } = await admin.put('/produtos/999999', { categoriaId: 1, nome: 'X', preco: 10 });
       assert.equal(status, 404);
     });
   });
@@ -187,7 +190,7 @@ describe('API /produtos', () => {
     it('apaga o produto (204)', async () => {
       const produto = await criarProduto(api);
 
-      assert.equal((await api.delete(`/produtos/${produto.id}`)).status, 204);
+      assert.equal((await admin.delete(`/produtos/${produto.id}`)).status, 204);
       assert.equal((await api.get(`/produtos/${produto.id}`)).status, 404);
     });
 
@@ -196,14 +199,14 @@ describe('API /produtos', () => {
       const cliente = await cadastrarCliente(api);
       await fecharPedido(api, cliente.id, [{ produtoId: produto.id, quantidade: 1 }]);
 
-      const { status } = await api.delete(`/produtos/${produto.id}`);
+      const { status } = await admin.delete(`/produtos/${produto.id}`);
 
       assert.equal(status, 409);
       assert.equal((await api.get(`/produtos/${produto.id}`)).status, 200);
     });
 
     it('responde 404 quando o produto nao existe', async () => {
-      assert.equal((await api.delete('/produtos/999999')).status, 404);
+      assert.equal((await admin.delete('/produtos/999999')).status, 404);
     });
   });
 });

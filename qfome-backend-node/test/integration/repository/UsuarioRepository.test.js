@@ -68,6 +68,14 @@ describe('UsuarioRepository', () => {
       assert.equal(repository.findByEmail('ninguem@qfome.com'), null);
     });
 
+    it('diz se existe algum usuario com o perfil', () => {
+      assert.equal(repository.existsByPerfil('CLIENTE'), true);
+      assert.equal(repository.existsByPerfil('ADMIN'), false);
+
+      repository.save(novoUsuario({ email: 'admin@qfome.com', perfil: 'ADMIN' }));
+      assert.equal(repository.existsByPerfil('ADMIN'), true);
+    });
+
     it('diz se o id ou o e-mail existem', () => {
       assert.equal(repository.existsById(ana.id), true);
       assert.equal(repository.existsById(999), false);

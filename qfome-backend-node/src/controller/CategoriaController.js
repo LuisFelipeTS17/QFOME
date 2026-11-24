@@ -3,14 +3,15 @@ import { parametroLong } from '../web/conversao.js';
 import { corpoValidado } from '../web/requisicao.js';
 import { criarRouter, metodoNaoSuportado } from '../web/rotas.js';
 
-export function criarCategoriaController(categoriaService) {
+/** Consultas sao publicas; criar, alterar e excluir exigem o login administrativo. */
+export function criarCategoriaController(categoriaService, exigirAdmin) {
   const router = criarRouter();
 
   router.route('/categorias')
     .get((req, res) => {
       res.json(categoriaService.listarTodas());
     })
-    .post((req, res) => {
+    .post(exigirAdmin, (req, res) => {
       const dto = corpoValidado(req, CategoriaRequestDTO);
       res.status(201).json(categoriaService.criar(dto));
     })
@@ -20,12 +21,12 @@ export function criarCategoriaController(categoriaService) {
     .get((req, res) => {
       res.json(categoriaService.buscarPorId(parametroLong(req.params.id)));
     })
-    .put((req, res) => {
+    .put(exigirAdmin, (req, res) => {
       const id = parametroLong(req.params.id);
       const dto = corpoValidado(req, CategoriaRequestDTO);
       res.json(categoriaService.atualizar(id, dto));
     })
-    .delete((req, res) => {
+    .delete(exigirAdmin, (req, res) => {
       categoriaService.deletar(parametroLong(req.params.id));
       res.status(204).end();
     })

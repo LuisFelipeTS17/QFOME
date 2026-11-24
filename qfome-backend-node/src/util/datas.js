@@ -11,10 +11,15 @@ function partes(data) {
   };
 }
 
-/** Agora, no formato gravado no banco pelo backend Spring (sqlite-jdbc, date_class=TEXT): "2026-10-14 12:15:08.454". */
-export function agora() {
-  const { dia, horaMinuto, segundos, milissegundos } = partes(new Date());
+/** Data no formato gravado no banco pelo backend Spring (sqlite-jdbc, date_class=TEXT): "2026-10-14 12:15:08.454". */
+export function paraBanco(data) {
+  const { dia, horaMinuto, segundos, milissegundos } = partes(data);
   return `${dia} ${horaMinuto}:${doisDigitos(segundos)}.${String(milissegundos).padStart(3, '0')}`;
+}
+
+/** Agora, no formato do banco. */
+export function agora() {
+  return paraBanco(new Date());
 }
 
 /** Data do banco no JSON, como o Jackson escreve LocalDateTime: "2026-10-14T12:15:08.454" (fracao sem zeros a direita). */

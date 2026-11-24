@@ -1,5 +1,6 @@
 import { UsuarioDTO } from '../dto/UsuarioDTO.js';
 import { UsuarioUpdateDTO } from '../dto/UsuarioUpdateDTO.js';
+import { Perfil } from '../model/enums/Perfil.js';
 import { trim } from '../util/texto.js';
 import { parametroLong } from '../web/conversao.js';
 import { ResponseStatusError } from '../web/erros.js';
@@ -20,18 +21,26 @@ export function criarClienteController(usuarioRepository) {
       const dto = corpoValidado(req, UsuarioUpdateDTO);
       const usuario = usuarioRepository.findById(id);
       if (!usuario) throw new ResponseStatusError(404, 'Usuario nao encontrado');
+      recusarAdministrador(usuario);
       usuario.nome = trim(dto.nome);
       res.json(new UsuarioDTO(usuarioRepository.save(usuario)));
     })
     .delete((req, res) => {
       const id = parametroLong(req.params.id);
-      if (!usuarioRepository.existsById(id)) {
-        throw new ResponseStatusError(404, 'Usuario nao encontrado');
-      }
+      const usuario = usuarioRepository.findById(id);
+      if (!usuario) throw new ResponseStatusError(404, 'Usuario nao encontrado');
+      recusarAdministrador(usuario);
       usuarioRepository.deleteById(id);
       res.status(204).end();
     })
     .all(metodoNaoSuportado);
 
   return router;
+}
+
+// Estas rotas nao pedem login: sem isto, qualquer um poderia renomear ou apagar o administrador.
+function recusarAdministrador(usuario) {
+  if (usuario.perfil === Perfil.ADMIN) {
+    throw new ResponseStatusError(403, 'O administrador nao pode ser alterado por esta rota');
+  }
 }

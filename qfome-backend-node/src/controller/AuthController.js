@@ -1,5 +1,6 @@
 import { Perfil } from '../model/enums/Perfil.js';
 import { Usuario } from '../model/Usuario.js';
+import { senhaConfere } from '../util/senha.js';
 import { isBlank, trim } from '../util/texto.js';
 import { comoObjeto, comoString } from '../web/conversao.js';
 import { lerCorpoJson } from '../web/requisicao.js';
@@ -52,7 +53,7 @@ export function criarAuthController(usuarioRepository) {
       }
 
       const usuario = usuarioRepository.findByEmail(trim(email).toLowerCase());
-      if (usuario && usuario.senha === senha) {
+      if (usuario && senhaConfere(senha, usuario.senha)) {
         return res.json(resposta(usuario, 'Login realizado com sucesso'));
       }
       return responderTexto(req, res, 401, 'Usuario ou senha invalidos');

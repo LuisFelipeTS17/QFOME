@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
+import { entrarComoAdmin } from '../../apoio/admin.js';
 import { subirAplicacao } from '../../apoio/api.js';
 import { CATALOGO, criarCategoria, criarProduto, unico } from '../../apoio/dados.js';
 
 describe('API /categorias', () => {
   let api;
+  let admin;
 
   before(async () => {
     api = await subirAplicacao();
+    admin = await entrarComoAdmin(api);
   });
 
   after(() => api.encerrar());
@@ -47,7 +50,7 @@ describe('API /categorias', () => {
     it('cria a categoria (201) com o nome aparado', async () => {
       const nome = unico('Massas');
 
-      const { status, corpo } = await api.post('/categorias', { nome: `  ${nome}  ` });
+      const { status, corpo } = await admin.post('/categorias', { nome: `  ${nome}  ` });
 
       assert.equal(status, 201);
       assert.deepEqual(corpo, { id: corpo.id, nome });
@@ -55,7 +58,7 @@ describe('API /categorias', () => {
     });
 
     it('recusa nome repetido, sem diferenciar maiusculas (409)', async () => {
-      const { status, corpo } = await api.post('/categorias', { nome: 'CASEIRA' });
+      const { status, corpo } = await admin.post('/categorias', { nome: 'CASEIRA' });
 
       assert.equal(status, 409);
       assert.equal(corpo.erro, 'Ja existe uma categoria com esse nome');
@@ -68,7 +71,7 @@ describe('API /categorias', () => {
         [{ nome: 'x'.repeat(61) }, 'nome: tamanho deve ser entre 0 e 60'],
       ];
       for (const [corpoEnviado, erro] of casos) {
-        const { status, corpo } = await api.post('/categorias', corpoEnviado);
+        const { status, corpo } = await admin.post('/categorias', corpoEnviado);
         assert.equal(status, 400);
         assert.equal(corpo.erro, erro);
       }
@@ -80,7 +83,7 @@ describe('API /categorias', () => {
       const categoria = await criarCategoria(api);
       const novoNome = unico('Lanches');
 
-      const { status, corpo } = await api.put(`/categorias/${categoria.id}`, { nome: novoNome });
+      const { status, corpo } = await admin.put(`/categorias/${categoria.id}`, { nome: novoNome });
 
       assert.equal(status, 200);
       assert.deepEqual(corpo, { id: categoria.id, nome: novoNome });
@@ -89,13 +92,13 @@ describe('API /categorias', () => {
     it('recusa o nome de outra categoria (409)', async () => {
       const categoria = await criarCategoria(api);
 
-      const { status } = await api.put(`/categorias/${categoria.id}`, { nome: 'Caseira' });
+      const { status } = await admin.put(`/categorias/${categoria.id}`, { nome: 'Caseira' });
 
       assert.equal(status, 409);
     });
 
     it('responde 404 quando a categoria nao existe', async () => {
-      assert.equal((await api.put('/categorias/999999', { nome: unico('X') })).status, 404);
+      assert.equal((await admin.put('/categorias/999999', { nome: unico('X') })).status, 404);
     });
   });
 
@@ -103,7 +106,7 @@ describe('API /categorias', () => {
     it('apaga a categoria sem produtos (204)', async () => {
       const categoria = await criarCategoria(api);
 
-      const { status, texto } = await api.delete(`/categorias/${categoria.id}`);
+      const { status, texto } = await admin.delete(`/categorias/${categoria.id}`);
 
       assert.equal(status, 204);
       assert.equal(texto, '');
@@ -113,14 +116,14 @@ describe('API /categorias', () => {
     it('nao apaga categoria que tem produtos (409)', async () => {
       const produto = await criarProduto(api);
 
-      const { status, corpo } = await api.delete(`/categorias/${produto.categoriaId}`);
+      const { status, corpo } = await admin.delete(`/categorias/${produto.categoriaId}`);
 
       assert.equal(status, 409);
       assert.equal(corpo.erro, 'Operacao viola uma restricao do banco (registro em uso ou duplicado)');
     });
 
     it('responde 404 quando a categoria nao existe', async () => {
-      assert.equal((await api.delete('/categorias/999999')).status, 404);
+      assert.equal((await admin.delete('/categorias/999999')).status, 404);
     });
   });
 });

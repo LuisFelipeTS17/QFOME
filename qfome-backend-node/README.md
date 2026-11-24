@@ -35,7 +35,19 @@ API disponivel em `http://localhost:8080`. Nao precisa instalar banco: o arquivo
 - O cadastro exige e-mail em formato valido e limita o tamanho dos campos (nome ate 100,
   e-mail ate 150 e senha ate 255 caracteres); fora disso responde `400`.
 - Toda conta criada pela API tem o perfil `CLIENTE` (os perfis sao `CLIENTE` e `ADMIN`).
+- As rotas `/clientes/{id}` nao alteram nem apagam um administrador (`403`).
 - Login com e-mail ou senha errados responde `401`.
+
+### Login administrativo
+
+- Criar, alterar e excluir produtos e categorias exige o login de um usuario `ADMIN`; as consultas
+  sao publicas. Sem sessao valida, a resposta e `401`.
+- O primeiro administrador e criado quando o servidor inicia e o banco ainda nao tem nenhum:
+  `admin@qfome.com`, senha `Qfome@2026` (troque com `ADMIN_EMAIL` e `ADMIN_SENHA` antes do primeiro
+  start). A senha fica no banco em hash (scrypt).
+- O login devolve um token, enviado nas outras rotas em `Authorization: Bearer <token>`. O banco
+  guarda so o hash do token (tabela `sessao_admin`), que vale por `ADMIN_SESSAO_MINUTOS`.
+- Toda exportacao de pedidos em JSON fica registrada na tabela `exportacao`, com quem exportou.
 
 ### Catalogo
 
@@ -82,6 +94,19 @@ API disponivel em `http://localhost:8080`. Nao precisa instalar banco: o arquivo
 Resposta: `{ id, name, email, perfil, message }`. Nas falhas (`400`, `401`, `409`) o corpo e
 so o texto da mensagem, por exemplo `E-mail ja cadastrado`.
 
+### Administracao
+
+| Metodo | Rota                                  | Corpo                 | Login | Sucesso |
+|--------|---------------------------------------|-----------------------|-------|---------|
+| POST   | `/admin/login`                        | `{ email, password }` |       | `200`   |
+| GET    | `/admin/sessao`                       |                       | sim   | `200`   |
+| POST   | `/admin/logout`                       |                       |       | `204`   |
+| POST   | `/admin/relatorios/pedidos/exportar`  |                       | sim   | `201`   |
+| GET    | `/admin/exportacoes`                  |                       | sim   | `200`   |
+
+O login responde `{ token, expiraEm, usuario }`. Falhas: `401` (e-mail ou senha invalidos, sem
+sessao ou sessao expirada) e `403` (a conta nao e de administrador).
+
 ### Clientes
 
 | Metodo | Rota             | Corpo      | Sucesso |
@@ -94,6 +119,8 @@ Resposta: `{ id, nome, email, perfil }`.
 
 ### Categorias
 
+POST, PUT e DELETE exigem o login administrativo.
+
 | Metodo | Rota               | Corpo      | Sucesso |
 |--------|--------------------|------------|---------|
 | GET    | `/categorias`      |            | `200`   |
@@ -105,6 +132,8 @@ Resposta: `{ id, nome, email, perfil }`.
 Resposta: `{ id, nome }`.
 
 ### Produtos
+
+POST, PUT e DELETE exigem o login administrativo.
 
 | Metodo | Rota             | Corpo                          | Sucesso |
 |--------|------------------|--------------------------------|---------|
@@ -247,6 +276,8 @@ Fora as rotas de autenticacao, toda falha responde:
 | Status | Quando                                                                          |
 |--------|---------------------------------------------------------------------------------|
 | `400`  | campo invalido, JSON ilegivel, adicional de outro produto, forma de pagamento invalida |
+| `401`  | rota administrativa sem login, ou com a sessao expirada                         |
+| `403`  | conta sem o perfil de administrador                                             |
 | `404`  | cliente, categoria, produto, item do carrinho ou pedido nao encontrado          |
 | `405`  | metodo HTTP nao suportado na rota                                               |
 | `409`  | registro duplicado ou em uso (ex.: apagar um produto que ja esta em um pedido)  |
@@ -281,6 +312,9 @@ Todas sao opcionais. Podem vir do ambiente ou de um arquivo `.env` na pasta do b
 | `APP_CORS_ALLOWED_HEADERS`               | `Authorization,Content-Type,Accept,Origin,X-Requested-With`   | cabecalhos liberados no CORS |
 | `APP_CORS_ALLOW_CREDENTIALS`             | `true`                                                        | envia `Access-Control-Allow-Credentials` |
 | `APP_CORS_MAX_AGE_SECONDS`               | `3600`                                                        | cache do preflight, em segundos |
+| `ADMIN_EMAIL`                            | `admin@qfome.com`                                             | e-mail do primeiro administrador |
+| `ADMIN_SENHA`                            | `Qfome@2026`                                                  | senha do primeiro administrador |
+| `ADMIN_SESSAO_MINUTOS`                   | `480`                                                         | duracao da sessao administrativa |
 | `MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS`| `never`                                                       | `never`, `when-authorized` ou `always` |
 
 O app mobile nativo nao passa por CORS; a origem `8081` e para o Expo no navegador.
@@ -311,8 +345,10 @@ test/
     banco.test.js       schema, catalogo inicial, chaves estrangeiras e transacoes
     repository/         consultas SQL contra um SQLite real
     api/                requisicoes HTTP contra a aplicacao inteira, uma rota por arquivo,
-                        mais erros, CORS e o fluxo completo do pedido (fluxoDoPedido.test.js)
+                        mais erros, CORS e as jornadas completas do cliente (fluxoDoPedido.test.js)
+                        e do administrador (fluxoDoAdministrador.test.js)
   apoio/                funcoes compartilhadas
+    admin.js            cria um administrador no banco do teste e faz o login
     api.js              sobe a aplicacao e faz requisicoes HTTP
     banco.js            abre um SQLite temporario
     dados.js            itens do catalogo inicial e atalhos (cadastrar cliente, fechar pedido...)

@@ -1,5 +1,8 @@
 // Equivalente ao application.yml: cada valor pode vir de uma variavel de ambiente.
 
+/** Senha do administrador para demonstracao; em uso real, defina ADMIN_SENHA. */
+export const SENHA_ADMIN_PADRAO = 'Qfome@2026';
+
 export function lerConfiguracao(env = process.env) {
   return {
     porta: inteiro(env.SERVER_PORT ?? '8080', 'SERVER_PORT'),
@@ -30,6 +33,13 @@ export function lerConfiguracao(env = process.env) {
       // pagamento roda em modo simulado: a API responde um link de demonstracao.
       accessToken: (env.MERCADOPAGO_ACCESS_TOKEN ?? '').trim() || null,
       urlApi: env.MERCADOPAGO_API_URL ?? 'https://api.mercadopago.com',
+    },
+    admin: {
+      // Primeiro administrador, criado so quando o banco ainda nao tem nenhum.
+      email: (env.ADMIN_EMAIL ?? '').trim() || 'admin@qfome.com',
+      senha: env.ADMIN_SENHA || SENHA_ADMIN_PADRAO,
+      // Duracao da sessao do login administrativo.
+      sessaoMinutos: inteiro(env.ADMIN_SESSAO_MINUTOS ?? '480', 'ADMIN_SESSAO_MINUTOS'),
     },
   };
 }

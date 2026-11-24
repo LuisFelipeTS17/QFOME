@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { agora, agoraComoLocalDateTime, paraJson } from '../../../src/util/datas.js';
+import { agora, agoraComoLocalDateTime, paraBanco, paraJson } from '../../../src/util/datas.js';
 
 /** Congela o relogio do teste na data local informada (mes comeca em 1). */
 function congelarRelogio(t, [ano, mes, dia, hora, minuto, segundo, milissegundo]) {
@@ -18,6 +18,12 @@ describe('agora', () => {
   it('mantem os milissegundos mesmo quando sao zero', (t) => {
     congelarRelogio(t, [2026, 1, 2, 0, 0, 0, 0]);
     assert.equal(agora(), '2026-01-02 00:00:00.000');
+  });
+});
+
+describe('paraBanco', () => {
+  it('escreve qualquer data no formato do banco', () => {
+    assert.equal(paraBanco(new Date(2026, 10, 24, 18, 5, 9, 70)), '2026-11-24 18:05:09.070');
   });
 });
 

@@ -17,6 +17,7 @@ describe('lerConfiguracao', () => {
       health: { mostrarDetalhes: false },
       dados: { pasta: './data' },
       mercadoPago: { accessToken: null, urlApi: 'https://api.mercadopago.com' },
+      admin: { email: 'admin@qfome.com', senha: 'Qfome@2026', sessaoMinutos: 480 },
     });
   });
 
@@ -33,6 +34,9 @@ describe('lerConfiguracao', () => {
       DATA_DIR: '/tmp/dados',
       MERCADOPAGO_ACCESS_TOKEN: ' TEST-abc ',
       MERCADOPAGO_API_URL: 'https://mp.local',
+      ADMIN_EMAIL: ' chefe@qfome.com ',
+      ADMIN_SENHA: 'Outra@Senha1',
+      ADMIN_SESSAO_MINUTOS: '30',
     });
 
     assert.equal(config.porta, 9090);
@@ -48,6 +52,13 @@ describe('lerConfiguracao', () => {
     // O token sai sem espacos nas pontas; vazio ou em branco vira null (modo simulado).
     assert.deepEqual(config.mercadoPago, { accessToken: 'TEST-abc', urlApi: 'https://mp.local' });
     assert.equal(lerConfiguracao({ MERCADOPAGO_ACCESS_TOKEN: '   ' }).mercadoPago.accessToken, null);
+    assert.deepEqual(config.admin, { email: 'chefe@qfome.com', senha: 'Outra@Senha1', sessaoMinutos: 30 });
+  });
+
+  it('usa o administrador padrao quando as variaveis estao vazias', () => {
+    const { admin } = lerConfiguracao({ ADMIN_EMAIL: ' ', ADMIN_SENHA: '' });
+    assert.equal(admin.email, 'admin@qfome.com');
+    assert.equal(admin.senha, 'Qfome@2026');
   });
 
   it('separa listas por virgula, ignorando espacos e itens vazios', () => {
